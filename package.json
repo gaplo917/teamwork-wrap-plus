@@ -1,0 +1,43 @@
+{
+  "name": "teamwork-wrapper",
+  "version": "2.0.0",
+  "license": "MIT",
+  "scripts": {
+    "dev": "electron-webpack dev",
+    "compile": "electron-webpack",
+    "dist": "yarn compile && electron-builder",
+    "dist:dir-nosign": "yarn dist --dir -c.compression=store -c.mac.identity=null",
+    "dist:dir": "yarn dist --dir -c.compression=store"
+  },
+  "build": {
+    "appId": "com.gaplotech.teamwork-wrapper",
+    "files": [
+      "build/*"
+    ],
+    "mac": {
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist"
+    },
+    "afterSign": "scripts/notarize.js"
+  },
+  "electronWebpack": {
+    "main": {
+      "webpackConfig": "webpack.config.js"
+    }
+  },
+  "dependencies": {
+    "copy-webpack-plugin": "^6.0.1",
+    "open": "^7.0.4",
+    "source-map-support": "^0.5.12"
+  },
+  "devDependencies": {
+    "dotenv": "^8.2.0",
+    "electron": "^9.0.0",
+    "electron-builder": "^22.7.0",
+    "electron-notarize": "^0.3.0",
+    "electron-webpack": "^2.8.2",
+    "webpack": "~4.43.0"
+  }
+}
