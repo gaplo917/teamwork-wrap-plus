@@ -4,7 +4,10 @@ Simple Electron wrapper for https://teamwork.gtomato.com/
 ### Features
 * [x] Native Badges
 * [x] Open Link to external URL
-* Local Lock
+* [x] Dark Mode
+* [x] Native Chrome Spell Check
+* [x] Simulate Chrome Right click handling
+* [] Local Lock 
 
 # Getting Started
 > A bare minimum project structure to get started developing with [`electron-webpack`](https://github.com/electron-userland/electron-webpack).
