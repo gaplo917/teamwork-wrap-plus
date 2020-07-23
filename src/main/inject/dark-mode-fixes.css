@@ -16,7 +16,7 @@
 .Avatar > .texts > .title,
 .InputBox > .TextArea .Editable:empty::before,
 .MessageBubble .RecallView {
-    color: #777;
+    color: #888;
 }
 
 .LeftBar > .ListView .items .ReactVirtualized__List .item {
