@@ -1,6 +1,6 @@
 {
   "name": "teamwork-wrapper",
-  "version": "3.2.0",
+  "version": "3.3.0",
   "license": "MIT",
   "scripts": {
     "dev": "electron-webpack dev",
@@ -11,12 +11,14 @@
   },
   "build": {
     "appId": "com.gaplotech.teamwork-wrapper",
+    "productName": "Teamwork Wrap+",
     "files": [
       "build/*"
     ],
     "mac": {
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
+      "darkModeSupport": true,
       "entitlements": "build/entitlements.mac.plist",
       "entitlementsInherit": "build/entitlements.mac.plist"
     },

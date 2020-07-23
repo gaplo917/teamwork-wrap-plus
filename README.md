@@ -7,7 +7,8 @@ Simple Electron wrapper for https://teamwork.gtomato.com/
 * [x] Dark Mode
 * [x] Native Chrome Spell Check
 * [x] Simulate Chrome Right click handling
-* [x] Add Ping Fang Setting
+* [x] Add Ping Fang HK Setting
+* [x] Add Noto Sans HK Setting
 * [x] Add Subpixel antialiased setting
 * [] Local Lock 
 
