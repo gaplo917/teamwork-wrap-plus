@@ -31,14 +31,6 @@ app.on('activate', async () => {
 // create main BrowserWindow when electron is ready
 app.on('ready', async () => {
   mainWindow = await createMainWindow()
-
-  const menu = createApplicationMenu({
-    onToggleDarkMode: () => {
-      mainWindow.webContents.send('toggle-dark-mode', {})
-    },
-  })
-
-  Menu.setApplicationMenu(menu)
 })
 
 // listen badge update from renderer
@@ -49,4 +41,22 @@ ipcMain.on('badge', (event, data) => {
   } else {
     app.dock.setBadge(`${count}`)
   }
+})
+
+ipcMain.on('application-settings', (event, data) => {
+  const settings = JSON.parse(data)
+  const menu = createApplicationMenu({
+    settings,
+    onToggleDarkMode: () => {
+      mainWindow.webContents.send('toggle-dark-mode', {})
+    },
+    onTogglePingFang: () => {
+      mainWindow.webContents.send('toggle-ping-fang', {})
+    },
+    onToggleSubpixel: () => {
+      mainWindow.webContents.send('toggle-subpixel', {})
+    },
+  })
+
+  Menu.setApplicationMenu(menu)
 })

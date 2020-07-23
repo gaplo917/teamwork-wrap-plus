@@ -14,7 +14,8 @@
 .MessageViewItem.bubble > div.body > div.whoWhatWhen > div.statusAndWhen > div.when,
 .CustomFieldViewer .cell.key,
 .Avatar > .texts > .title,
-.InputBox > .TextArea .Editable:empty::before {
+.InputBox > .TextArea .Editable:empty::before,
+.MessageBubble .RecallView {
     color: rgba(255, 255, 255, 0.6);
 }
 

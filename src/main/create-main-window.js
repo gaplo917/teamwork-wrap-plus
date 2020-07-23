@@ -41,7 +41,7 @@ export async function createMainWindow() {
     await window.webContents.executeJavaScript(`const darkModeFixes = \`${darkModeFixes}\`;`)
 
     // `;0` is useful, ref: https://github.com/electron/electron/issues/23722
-    return window.webContents.executeJavaScript(`${injectCode};0`)
+    await window.webContents.executeJavaScript(`${injectCode};0`)
   })
 
   window.webContents.on('new-window', openUrlHandler)
