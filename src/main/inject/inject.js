@@ -7,12 +7,14 @@ class Storage {
   constructor() {
     // send the application settings to main process for rendering the application menu
     ipc.send('application-settings', JSON.stringify(this.getApplicationSettings()))
+    this.onChangeHandlers = new Map()
   }
 
   getApplicationSettings() {
     return {
       isDark: this.isDark,
       isPingFang: this.isPingFang,
+      isNotoSansHK: this.isNotoSansHK,
       isSubpixel: this.isSubpixel,
     }
   }
@@ -25,6 +27,10 @@ class Storage {
     return (window.localStorage.getItem('pingfang') || '0') === '1'
   }
 
+  get isNotoSansHK() {
+    return (window.localStorage.getItem('notosanshk') || '0') === '1'
+  }
+
   get isSubpixel() {
     return (window.localStorage.getItem('subpixel') || '0') === '1'
   }
@@ -32,16 +38,33 @@ class Storage {
   set isDark(mode) {
     window.localStorage.setItem('theme', mode)
     ipc.send('application-settings', JSON.stringify(this.getApplicationSettings()))
+    const handler = this.onChangeHandlers.get('isDark')
+    handler && handler(mode)
   }
 
   set isPingFang(mode) {
     window.localStorage.setItem('pingfang', mode)
     ipc.send('application-settings', JSON.stringify(this.getApplicationSettings()))
+    const handler = this.onChangeHandlers.get('isPingFang')
+    handler && handler(mode)
+  }
+
+  set isNotoSansHK(mode) {
+    window.localStorage.setItem('notosanshk', mode)
+    ipc.send('application-settings', JSON.stringify(this.getApplicationSettings()))
+    const handler = this.onChangeHandlers.get('isNotoSansHK')
+    handler && handler(mode)
   }
 
   set isSubpixel(mode) {
     window.localStorage.setItem('subpixel', mode)
     ipc.send('application-settings', JSON.stringify(this.getApplicationSettings()))
+    const handler = this.onChangeHandlers.get('isSubpixel')
+    handler && handler(mode)
+  }
+
+  on(key, handler) {
+    this.onChangeHandlers.set(key, handler)
   }
 }
 
@@ -81,13 +104,15 @@ function registerDarkModeHandling() {
   // add script to DOM
   document.head.appendChild(darkReaderScript)
 
+  storage.on('isDark', value => {
+    updateUI(value === '1')
+  })
+
   ipc.on('toggle-dark-mode', () => {
     if (storage.isDark) {
       storage.isDark = '0'
-      updateUI(false)
     } else {
       storage.isDark = '1'
-      updateUI(true)
     }
   })
 }
@@ -110,13 +135,49 @@ function registerPingFangHandling() {
 
   updateUI(storage.isPingFang)
 
+  storage.on('isPingFang', value => {
+    updateUI(value === '1')
+  })
+
   ipc.on('toggle-ping-fang', () => {
     if (storage.isPingFang) {
       storage.isPingFang = '0'
-      updateUI(false)
     } else {
       storage.isPingFang = '1'
-      updateUI(true)
+      storage.isNotoSansHK = '0'
+    }
+  })
+}
+
+function registerNotoSansHKHandling() {
+  const style = document.createElement('style')
+  style.innerText = `
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+HK:wght@100;400;700&display=swap');
+    * {
+      font-family: 'Noto Sans HK', -apple-system, 'Helvetica Neue', BlinkMacSystemFont, 'Microsoft Yahei', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', sans-serif;
+    }
+  `.trim()
+
+  const updateUI = bool => {
+    if (bool) {
+      document.head.appendChild(style)
+    } else {
+      style.remove()
+    }
+  }
+
+  updateUI(storage.isNotoSansHK)
+
+  storage.on('isNotoSansHK', value => {
+    updateUI(value === '1')
+  })
+
+  ipc.on('toggle-noto-sans-hk', () => {
+    if (storage.isNotoSansHK) {
+      storage.isNotoSansHK = '0'
+    } else {
+      storage.isNotoSansHK = '1'
+      storage.isPingFang = '0'
     }
   })
 }
@@ -139,13 +200,15 @@ function registerSubpixelHandling() {
 
   updateUI(storage.isSubpixel)
 
+  storage.on('isSubpixel', value => {
+    updateUI(value === '1')
+  })
+
   ipc.on('toggle-subpixel', () => {
     if (storage.isSubpixel) {
       storage.isSubpixel = '0'
-      updateUI(false)
     } else {
       storage.isSubpixel = '1'
-      updateUI(true)
     }
   })
 }
@@ -206,6 +269,7 @@ function registerRightClickMenuHandling() {
 
 registerDarkModeHandling()
 registerPingFangHandling()
+registerNotoSansHKHandling()
 registerSubpixelHandling()
 registerBadgeHandling()
 registerRightClickMenuHandling()

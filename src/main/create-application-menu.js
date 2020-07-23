@@ -1,7 +1,7 @@
-import { app, Menu, ipcMain } from 'electron'
+import { app, Menu } from 'electron'
 
 export function createApplicationMenu(
-  { settings, onToggleDarkMode, onTogglePingFang, onToggleSubpixel } = { settings: {} },
+  { settings, onToggleDarkMode, onTogglePingFang, onToggleNotoSansHK, onToggleSubpixel } = { settings: {} },
 ) {
   const isMac = process.platform === 'darwin'
 
@@ -87,21 +87,24 @@ export function createApplicationMenu(
       submenu: [
         {
           label: `${toggleAction(settings.isDark)} Dark Mode`,
-          id: 'dark-mode-toggle',
           click: () => {
             onToggleDarkMode && onToggleDarkMode()
           },
         },
         {
           label: `${toggleAction(settings.isPingFang)} PingFang HK`,
-          id: 'ping-fang-toggle',
           click: () => {
             onTogglePingFang && onTogglePingFang()
           },
         },
         {
+          label: `${toggleAction(settings.isNotoSansHK)} Noto Sans HK`,
+          click: () => {
+            onToggleNotoSansHK && onToggleNotoSansHK()
+          },
+        },
+        {
           label: `${toggleAction(settings.isSubpixel)} subpixel-antialiased`,
-          id: 'ping-fang-toggle',
           click: () => {
             onToggleSubpixel && onToggleSubpixel()
           },

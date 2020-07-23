@@ -53,6 +53,9 @@ ipcMain.on('application-settings', (event, data) => {
     onTogglePingFang: () => {
       mainWindow.webContents.send('toggle-ping-fang', {})
     },
+    onToggleNotoSansHK: () => {
+      mainWindow.webContents.send('toggle-noto-sans-hk', {})
+    },
     onToggleSubpixel: () => {
       mainWindow.webContents.send('toggle-subpixel', {})
     },
