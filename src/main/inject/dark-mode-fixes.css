@@ -1,0 +1,47 @@
+/* hide the arrow that cannot be inverted by DarkReader */
+.MessageBubble .arrow.left svg {
+    display: none !important;
+}
+
+.RecentMessageView > .items .item > .content .subject,
+.MessageViewItem.bubble > div.head > .displayDate {
+    color: white;
+}
+
+.RecentMessageView > .items .item > .content .what,
+.RecentMessageView > .items .item > .content .who,
+.RecentMessageView > .items .item > .extra .when,
+.MessageViewItem.bubble > div.body > div.whoWhatWhen > div.statusAndWhen > div.when,
+.CustomFieldViewer .cell.key,
+.Avatar > .texts > .title,
+.InputBox > .TextArea .Editable:empty::before {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.LeftBar > .ListView .items .ReactVirtualized__List .item {
+    border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+.ConversationView > .front > .NavigationBar {
+    border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+.LeftBar > .Switcher {
+    border-top-color: rgba(255, 255, 255, 0.1);
+}
+
+.ConversationView > .front  {
+    border-left-color: rgba(255, 255, 255, 0.1);
+    border-right-color: rgba(255, 255, 255, 0.1);
+}
+
+.ChatView > .InputBox {
+    border-top-color: rgba(255, 255, 255, 0.1);
+}
+
+.InputBox > .TextArea .Editable {
+    border-top-color: rgba(255, 255, 255, 0.1);
+    border-left-color: rgba(255, 255, 255, 0.1);
+    border-right-color: rgba(255, 255, 255, 0.1);
+    border-bottom-color: rgba(255, 255, 255, 0.1);
+}

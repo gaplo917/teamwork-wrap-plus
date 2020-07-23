@@ -6,7 +6,6 @@ import { openUrlHandler } from './open-url-handler'
 import { config } from './config'
 
 const isDevelopment = process.env.NODE_ENV !== 'production'
-const injectCode = fs.readFileSync(path.join(__dirname + '/inject.js'), 'utf8')
 
 export async function createMainWindow() {
   const window = new BrowserWindow({
@@ -35,7 +34,12 @@ export async function createMainWindow() {
     return false
   })
 
-  window.webContents.on('dom-ready', () => {
+  window.webContents.on('dom-ready', async () => {
+    const injectCode = fs.readFileSync(path.join(__dirname + '/inject/inject.js'), 'utf8')
+    const darkModeFixes = fs.readFileSync(path.join(__dirname + '/inject/dark-mode-fixes.css'), 'utf8')
+    // inject the css
+    await window.webContents.executeJavaScript(`const darkModeFixes = \`${darkModeFixes}\`;`)
+
     // `;0` is useful, ref: https://github.com/electron/electron/issues/23722
     return window.webContents.executeJavaScript(`${injectCode};0`)
   })

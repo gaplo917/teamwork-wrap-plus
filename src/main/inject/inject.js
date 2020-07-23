@@ -1,6 +1,7 @@
 console.debug('running injected script')
 const electron = require('electron')
 const ipc = electron.ipcRenderer
+const remote = electron.remote
 
 function registerDarkModeHandling() {
   console.debug('registerDarkModeHandling')
@@ -11,6 +12,7 @@ function registerDarkModeHandling() {
 
   const toggleDarkMode = isDark => {
     if (isDark) {
+      // noinspection JSUnresolvedVariable
       DarkReader.enable(
         {
           brightness: 150,
@@ -19,42 +21,8 @@ function registerDarkModeHandling() {
           grayscale: 0,
         },
         {
-          css: `
-            .MessageBubble .arrow.left svg {
-                display: none !important;
-            }
-            .RecentMessageView > .items .item > .content .subject {
-                color: rgba(255, 255, 255, 1);
-            }
-            .RecentMessageView > .items .item > .content .what, .RecentMessageView > .items .item > .content .who, .RecentMessageView > .items .item > .extra .when  {
-                color: rgba(255, 255, 255, 0.6);
-            }
-            .InputBox > .TextArea .Editable:empty::before {
-                color: rgba(255, 255, 255, 0.6);
-            }
-            .LeftBar > .ListView .items .ReactVirtualized__List .item {
-                border-bottom-color: rgba(255, 255, 255, 0.1);
-            }
-            .ConversationView > .front > .NavigationBar {
-                border-bottom-color: rgba(255, 255, 255, 0.1);
-            }
-            .LeftBar > .Switcher {
-                border-top-color: rgba(255, 255, 255, 0.1);
-            }
-            .ConversationView > .front  {
-                border-left-color: rgba(255, 255, 255, 0.1);
-                border-right-color: rgba(255, 255, 255, 0.1);
-            }
-            .ChatView > .InputBox {
-                border-top-color: rgba(255, 255, 255, 0.1);
-            }
-            .InputBox > .TextArea .Editable {
-                border-top-color: rgba(255, 255, 255, 0.1);
-                border-left-color: rgba(255, 255, 255, 0.1);
-                border-right-color: rgba(255, 255, 255, 0.1);
-                border-bottom-color: rgba(255, 255, 255, 0.1);
-            }
-        `,
+          invert: [],
+          css: darkModeFixes, // this variable is injected from main process
         },
       )
     } else {
@@ -119,7 +87,6 @@ function registerBadgeHandling() {
 function registerRightClickMenuHandling() {
   console.debug('registerRightClickMenuHandling')
 
-  const remote = electron.remote
   // `remote.require` since `Menu` is a main-process module.
   const buildEditorContextMenu = remote.require('electron-editor-context-menu')
 
