@@ -3,11 +3,6 @@
     display: none !important;
 }
 
-.RecentMessageView > .items .item > .content .subject,
-.MessageViewItem.bubble > div.head > .displayDate {
-    color: white;
-}
-
 .RecentMessageView > .items .item > .content .what,
 .RecentMessageView > .items .item > .content .who,
 .RecentMessageView > .items .item > .extra .when,
@@ -15,8 +10,19 @@
 .CustomFieldViewer .cell.key,
 .Avatar > .texts > .title,
 .InputBox > .TextArea .Editable:empty::before,
-.MessageBubble .RecallView {
-    color: #888;
+.MessageBubble .RecallView,
+.TeamworkWebHeader > .organizerRegion > .moduleName,
+.ContactableUserList .items .item .SimpleUserListItem .Avatar .title,
+.ContactableGroupList .items .item .SimpleGroupListItem .Avatar .title,
+.WelcomeView .contactListSummary, .WelcomeView .recentSummary,
+.GroupMemberPicker .items > .item .title,
+.GroupMemberEditor .fieldHeads > .item > .people .Avatar .texts .title,
+.GroupMemberEditor .items > .item > .people .Avatar .texts .title,
+.GroupEditor .basicSection .sectionTitle,
+.MessageBubble .FileView .DownloadableView .caption,
+input::placeholder
+{
+    color: #969696 !important;
 }
 
 .LeftBar > .ListView .items .ReactVirtualized__List .item {
@@ -45,4 +51,14 @@
     border-left-color: rgba(255, 255, 255, 0.1);
     border-right-color: rgba(255, 255, 255, 0.1);
     border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+/*More contrast Background color */
+.ConversationView > .front > .ChatView {
+    background-color: rgb(28, 31, 33);
+}
+
+.ConversationView > .front > .NavigationBar,
+.ConversationView > .front > .NavigationBar + .WelcomeView {
+    background-color: rgb(36, 39, 41);
 }

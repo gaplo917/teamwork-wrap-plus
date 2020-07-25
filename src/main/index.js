@@ -45,20 +45,31 @@ ipcMain.on('badge', (event, data) => {
 
 ipcMain.on('application-settings', (event, data) => {
   const settings = JSON.parse(data)
+  const toggleAction = bool => (bool ? 'Disable' : 'Enable')
+  const createToggleItem = (key, label) => {
+    return {
+      label: `${toggleAction(settings[key])} ${label}`,
+      click: () => {
+        mainWindow.webContents.send(key, {})
+      },
+    }
+  }
   const menu = createApplicationMenu({
-    settings,
-    onToggleDarkMode: () => {
-      mainWindow.webContents.send('toggle-dark-mode', {})
-    },
-    onTogglePingFang: () => {
-      mainWindow.webContents.send('toggle-ping-fang', {})
-    },
-    onToggleNotoSansHK: () => {
-      mainWindow.webContents.send('toggle-noto-sans-hk', {})
-    },
-    onToggleSubpixel: () => {
-      mainWindow.webContents.send('toggle-subpixel', {})
-    },
+    themeItems: [
+      createToggleItem('isDark', 'Dark Mode'),
+      createToggleItem('isBorderless', 'Border-less Mode'),
+      createToggleItem('isBoldUsername', 'Bold Username'),
+      createToggleItem('isBubbleDisplayDate', 'Bubble Display Date'),
+      createToggleItem('isPingFang', 'Ping Fang HK'),
+      createToggleItem('isNotoSans', 'Noto Sans HK'),
+      createToggleItem('isSubpixel', 'Subpixel Antialiased'),
+      {
+        label: 'Reset to Recommended Settings',
+        click: () => {
+          mainWindow.webContents.send('reset-recommended-settings', {})
+        },
+      },
+    ],
   })
 
   Menu.setApplicationMenu(menu)

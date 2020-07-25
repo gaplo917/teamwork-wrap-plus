@@ -5,66 +5,55 @@ const remote = electron.remote
 
 class Storage {
   constructor() {
-    // send the application settings to main process for rendering the application menu
-    ipc.send('application-settings', JSON.stringify(this.getApplicationSettings()))
+    const self = this
     this.onChangeHandlers = new Map()
+    this.settings = new Proxy(
+      {
+        isDark: false,
+        isBorderless: false,
+        isBoldUsername: false,
+        isBubbleDisplayDate: false,
+        isPingFang: false,
+        isNotoSans: false,
+        isSubpixel: false,
+      },
+      {
+        get(target, name, receiver) {
+          console.debug(`Getting ${name}`)
+          return (window.localStorage.getItem(name) || '1') === '1'
+        },
+        set(target, name, value, receiver) {
+          const convertedValue = value ? '1' : '0'
+          console.debug(`Settings ${name}=${convertedValue}`)
+          window.localStorage.setItem(name, convertedValue)
+          ipc.send('application-settings', JSON.stringify(self.getApplicationSettings()))
+          const handlers = self.onChangeHandlers.get(name) || []
+          handlers.forEach(it => it(value))
+        },
+      },
+    )
+
+    // send the application settings to main process for rendering the application menu
+    ipc.send('application-settings', JSON.stringify(self.getApplicationSettings()))
   }
 
   getApplicationSettings() {
-    return {
-      isDark: this.isDark,
-      isPingFang: this.isPingFang,
-      isNotoSansHK: this.isNotoSansHK,
-      isSubpixel: this.isSubpixel,
-    }
+    return this.settings
   }
 
-  get isDark() {
-    return (window.localStorage.getItem('theme') || '1') === '1'
-  }
-
-  get isPingFang() {
-    return (window.localStorage.getItem('pingfang') || '0') === '1'
-  }
-
-  get isNotoSansHK() {
-    return (window.localStorage.getItem('notosanshk') || '0') === '1'
-  }
-
-  get isSubpixel() {
-    return (window.localStorage.getItem('subpixel') || '0') === '1'
-  }
-
-  set isDark(mode) {
-    window.localStorage.setItem('theme', mode)
-    ipc.send('application-settings', JSON.stringify(this.getApplicationSettings()))
-    const handler = this.onChangeHandlers.get('isDark')
-    handler && handler(mode)
-  }
-
-  set isPingFang(mode) {
-    window.localStorage.setItem('pingfang', mode)
-    ipc.send('application-settings', JSON.stringify(this.getApplicationSettings()))
-    const handler = this.onChangeHandlers.get('isPingFang')
-    handler && handler(mode)
-  }
-
-  set isNotoSansHK(mode) {
-    window.localStorage.setItem('notosanshk', mode)
-    ipc.send('application-settings', JSON.stringify(this.getApplicationSettings()))
-    const handler = this.onChangeHandlers.get('isNotoSansHK')
-    handler && handler(mode)
-  }
-
-  set isSubpixel(mode) {
-    window.localStorage.setItem('subpixel', mode)
-    ipc.send('application-settings', JSON.stringify(this.getApplicationSettings()))
-    const handler = this.onChangeHandlers.get('isSubpixel')
-    handler && handler(mode)
-  }
-
+  /**
+   * Listen the storage changes
+   * @param key string
+   * @param handler   passing the changed value in first arguments
+   */
   on(key, handler) {
-    this.onChangeHandlers.set(key, handler)
+    const handlers = this.onChangeHandlers.get(key)
+    if (Array.isArray(handlers)) {
+      // mutate reference
+      handlers.push(handler)
+    } else {
+      this.onChangeHandlers.set(key, [handler])
+    }
   }
 }
 
@@ -98,32 +87,26 @@ function registerDarkModeHandling() {
   }
 
   darkReaderScript.onload = () => {
-    updateUI(storage.isDark)
+    updateUI(storage.settings.isDark)
   }
 
   // add script to DOM
   document.head.appendChild(darkReaderScript)
 
   storage.on('isDark', value => {
-    updateUI(value === '1')
+    updateUI(value)
   })
 
-  ipc.on('toggle-dark-mode', () => {
-    if (storage.isDark) {
-      storage.isDark = '0'
-    } else {
-      storage.isDark = '1'
-    }
+  ipc.on('isDark', () => {
+    storage.settings.isDark = !storage.settings.isDark
   })
 }
 
-function registerPingFangHandling() {
+function registerBooleanStyleSheet(key, { css }) {
+  console.debug('registerBooleanStyleSheet', key, css)
+
   const style = document.createElement('style')
-  style.innerText = `
-    * {
-      font-family: 'PingFang HK', -apple-system, 'Helvetica Neue', BlinkMacSystemFont, 'Microsoft Yahei', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', sans-serif;
-    }
-  `.trim()
+  style.innerText = css.trim()
 
   const updateUI = bool => {
     if (bool) {
@@ -133,83 +116,14 @@ function registerPingFangHandling() {
     }
   }
 
-  updateUI(storage.isPingFang)
+  updateUI(storage.settings[key])
 
-  storage.on('isPingFang', value => {
-    updateUI(value === '1')
+  storage.on(key, value => {
+    updateUI(value)
   })
 
-  ipc.on('toggle-ping-fang', () => {
-    if (storage.isPingFang) {
-      storage.isPingFang = '0'
-    } else {
-      storage.isPingFang = '1'
-      storage.isNotoSansHK = '0'
-    }
-  })
-}
-
-function registerNotoSansHKHandling() {
-  const style = document.createElement('style')
-  style.innerText = `
-    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+HK:wght@100;400;700&display=swap');
-    * {
-      font-family: 'Noto Sans HK', -apple-system, 'Helvetica Neue', BlinkMacSystemFont, 'Microsoft Yahei', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', sans-serif;
-    }
-  `.trim()
-
-  const updateUI = bool => {
-    if (bool) {
-      document.head.appendChild(style)
-    } else {
-      style.remove()
-    }
-  }
-
-  updateUI(storage.isNotoSansHK)
-
-  storage.on('isNotoSansHK', value => {
-    updateUI(value === '1')
-  })
-
-  ipc.on('toggle-noto-sans-hk', () => {
-    if (storage.isNotoSansHK) {
-      storage.isNotoSansHK = '0'
-    } else {
-      storage.isNotoSansHK = '1'
-      storage.isPingFang = '0'
-    }
-  })
-}
-
-function registerSubpixelHandling() {
-  const style = document.createElement('style')
-  style.innerText = `
-    * {
-        -webkit-font-smoothing: subpixel-antialiased;
-    }
-  `.trim()
-
-  const updateUI = bool => {
-    if (bool) {
-      document.head.appendChild(style)
-    } else {
-      style.remove()
-    }
-  }
-
-  updateUI(storage.isSubpixel)
-
-  storage.on('isSubpixel', value => {
-    updateUI(value === '1')
-  })
-
-  ipc.on('toggle-subpixel', () => {
-    if (storage.isSubpixel) {
-      storage.isSubpixel = '0'
-    } else {
-      storage.isSubpixel = '1'
-    }
+  ipc.on(key, () => {
+    storage.settings[key] = !storage.settings[key]
   })
 }
 
@@ -267,9 +181,98 @@ function registerRightClickMenuHandling() {
   })
 }
 
+function registerResetRecommendedSettings() {
+  ipc.on('reset-recommended-settings', () => {
+    storage.settings.isDark = true
+    storage.settings.isPingFang = true
+    storage.settings.isBoldUsername = true
+    storage.settings.isBorderless = true
+    storage.settings.isBubbleDisplayDate = true
+    storage.settings.isNotoSans = false
+    storage.settings.isSubpixel = false
+  })
+}
+
 registerDarkModeHandling()
-registerPingFangHandling()
-registerNotoSansHKHandling()
-registerSubpixelHandling()
+registerBooleanStyleSheet('isPingFang', {
+  css: `
+* {
+  font-family: 'PingFang HK', -apple-system, 'Helvetica Neue', BlinkMacSystemFont, 'Microsoft Yahei', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', sans-serif;
+}
+  `,
+})
+
+// handle isNotoSans
+registerBooleanStyleSheet('isNotoSans', {
+  css: `
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+HK:wght@100;400;700&display=swap');
+* {
+  font-family: 'Noto Sans HK', -apple-system, 'Helvetica Neue', BlinkMacSystemFont, 'Microsoft Yahei', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', sans-serif;
+}
+  `,
+})
+storage.on('isPingFang', value => {
+  if (value) {
+    storage.settings.isNotoSans = false
+  }
+})
+
+storage.on('isNotoSans', value => {
+  if (value) {
+    storage.settings.isPingFang = false
+  }
+})
+
+// handle isSubpixel
+registerBooleanStyleSheet('isSubpixel', {
+  css: `
+* {
+    -webkit-font-smoothing: subpixel-antialiased;
+}
+  `,
+})
+
+// handle isBorderless
+registerBooleanStyleSheet('isBorderless', {
+  css: `
+* {
+    border: 0 !important;
+}
+
+.ConversationView > .front > .NavigationBar,
+.ConversationView > .front > .NavigationBar + .WelcomeView {
+    background-color: rgb(245, 245, 245);
+}
+  `,
+})
+
+// handle isBoldUsername
+registerBooleanStyleSheet('isBoldUsername', {
+  css: `
+.RecentMessageView>.items .item>.content .subject,
+.Avatar > .texts > .displayName,
+.TopBar > .Me > .Avatar .displayName {
+    font-weight: 500;
+}
+  `,
+})
+
+// handle isBubbleDisplayDate
+registerBooleanStyleSheet('isBubbleDisplayDate', {
+  css: `
+.MessageViewItem.bubble > div.head {
+    background: unset;
+    margin-bottom: 8px;
+}
+
+.MessageViewItem.bubble > div.head > .displayDate {
+    background-color: rgb(230, 234, 238);
+    padding: 4px 16px;
+    border-radius: 20px;
+    color: black;
+}
+  `,
+})
 registerBadgeHandling()
 registerRightClickMenuHandling()
+registerResetRecommendedSettings()

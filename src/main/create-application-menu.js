@@ -1,11 +1,7 @@
 import { app, Menu } from 'electron'
 
-export function createApplicationMenu(
-  { settings, onToggleDarkMode, onTogglePingFang, onToggleNotoSansHK, onToggleSubpixel } = { settings: {} },
-) {
+export function createApplicationMenu({ themeItems }) {
   const isMac = process.platform === 'darwin'
-
-  const toggleAction = bool => (bool ? 'Disable' : 'Enable')
 
   const template = [
     // { role: 'appMenu' }
@@ -84,32 +80,7 @@ export function createApplicationMenu(
     },
     {
       label: 'Theme',
-      submenu: [
-        {
-          label: `${toggleAction(settings.isDark)} Dark Mode`,
-          click: () => {
-            onToggleDarkMode && onToggleDarkMode()
-          },
-        },
-        {
-          label: `${toggleAction(settings.isPingFang)} PingFang HK`,
-          click: () => {
-            onTogglePingFang && onTogglePingFang()
-          },
-        },
-        {
-          label: `${toggleAction(settings.isNotoSansHK)} Noto Sans HK`,
-          click: () => {
-            onToggleNotoSansHK && onToggleNotoSansHK()
-          },
-        },
-        {
-          label: `${toggleAction(settings.isSubpixel)} subpixel-antialiased`,
-          click: () => {
-            onToggleSubpixel && onToggleSubpixel()
-          },
-        },
-      ],
+      submenu: [...themeItems],
     },
   ]
 
