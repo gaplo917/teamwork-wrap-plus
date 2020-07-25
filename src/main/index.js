@@ -45,7 +45,7 @@ ipcMain.on('badge', (event, data) => {
 
 ipcMain.on('application-settings', (event, data) => {
   const settings = JSON.parse(data)
-  const toggleAction = bool => (bool ? 'Disable' : 'Enable')
+  const toggleAction = bool => (bool ? '🟢' : '🔴')
   const createToggleItem = (key, label) => {
     return {
       label: `${toggleAction(settings[key])} ${label}`,
@@ -63,8 +63,9 @@ ipcMain.on('application-settings', (event, data) => {
       createToggleItem('isBorderless', 'Border-less Mode'),
       createToggleItem('isBoldUsername', 'Bold Username'),
       createToggleItem('isBubbleDisplayDate', 'Bubble Display Date'),
-      ...(isMac ? [createToggleItem('isPingFang', 'Ping Fang HK')] : []),
-      createToggleItem('isNotoSans', 'Noto Sans HK'),
+      ...(isMac ? [createToggleItem('isPingFang', 'Ping Fang HK Font')] : []),
+      createToggleItem('isNotoSans', 'Noto Sans HK Font'),
+      createToggleItem('isJFOpen', 'JF Open Huninn Font'),
       createToggleItem('isSubpixel', 'Subpixel Antialiased'),
       {
         label: 'Reset to Recommended Settings',

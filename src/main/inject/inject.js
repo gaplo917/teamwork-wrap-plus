@@ -15,6 +15,7 @@ class Storage {
         isBubbleDisplayDate: false,
         isPingFang: false,
         isNotoSans: false,
+        isJFOpen: false,
         isSubpixel: false,
       },
       {
@@ -211,15 +212,39 @@ registerBooleanStyleSheet('isNotoSans', {
 }
   `,
 })
+
+registerBooleanStyleSheet('isJFOpen', {
+  css: `
+@font-face {
+  font-family: 'JFOpen';
+  font-display: swap;
+  src: url('https://cdn.jsdelivr.net/gh/justfont/open-huninn-font@v1.1/font/jf-openhuninn-1.1.ttf') format('truetype');
+}
+* {
+  font-family: 'JFOpen', -apple-system, 'Helvetica Neue', BlinkMacSystemFont, 'Microsoft Yahei', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', sans-serif;
+}
+  `,
+})
+
+//
 storage.on('isPingFang', value => {
   if (value) {
     storage.settings.isNotoSans = false
+    storage.settings.isJFOpen = false
   }
 })
 
 storage.on('isNotoSans', value => {
   if (value) {
     storage.settings.isPingFang = false
+    storage.settings.isJFOpen = false
+  }
+})
+
+storage.on('isJFOpen', value => {
+  if (value) {
+    storage.settings.isPingFang = false
+    storage.settings.isNotoSans = false
   }
 })
 
@@ -252,7 +277,7 @@ registerBooleanStyleSheet('isBoldUsername', {
 .RecentMessageView>.items .item>.content .subject,
 .Avatar > .texts > .displayName,
 .TopBar > .Me > .Avatar .displayName {
-    font-weight: 500;
+    font-weight: bold;
 }
   `,
 })
