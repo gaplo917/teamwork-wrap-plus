@@ -54,13 +54,16 @@ ipcMain.on('application-settings', (event, data) => {
       },
     }
   }
+
+  const isMac = process.platform === 'darwin'
+
   const menu = createApplicationMenu({
     themeItems: [
       createToggleItem('isDark', 'Dark Mode'),
       createToggleItem('isBorderless', 'Border-less Mode'),
       createToggleItem('isBoldUsername', 'Bold Username'),
       createToggleItem('isBubbleDisplayDate', 'Bubble Display Date'),
-      createToggleItem('isPingFang', 'Ping Fang HK'),
+      ...(isMac ? [createToggleItem('isPingFang', 'Ping Fang HK')] : []),
       createToggleItem('isNotoSans', 'Noto Sans HK'),
       createToggleItem('isSubpixel', 'Subpixel Antialiased'),
       {
