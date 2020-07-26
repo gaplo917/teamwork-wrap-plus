@@ -167,7 +167,9 @@ function registerBadgeHandling() {
 
 function registerResetRecommendedSettings() {
   ipc.on('reset-recommended-settings', () => {
-    storage.settings = defaultSettings
+    for (const [key, value] of Object.entries(defaultSettings)) {
+      storage.settings[key] = value
+    }
   })
 }
 
