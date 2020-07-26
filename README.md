@@ -1,16 +1,51 @@
 # Introduction
-Simple Electron wrapper for https://teamwork.gtomato.com/
+Simple Electron wrapper for https://teamwork.gtomato.com/.
 
-### Features
-* [x] Native Badges
-* [x] Open Link to external URL
+Also bring in some interesting UI enhancements. 
+
+### Enhancement
 * [x] Dark Mode
-* [x] Native Chrome Spell Check
-* [x] Simulate Chrome Right click handling
+* [x] Native Badges
+* [x] Add Border-less Setting
+* [x] Add Bold Username Setting
+* [x] Add Bubble Display Date Setting
 * [x] Add Ping Fang HK Setting
 * [x] Add Noto Sans HK Setting
-* [x] Add Subpixel antialiased setting
-* [] Local Lock 
+* [x] Add JF Open Huninn setting
+* [x] Add Subpixel antialiased font rendering setting
+* [] Secure Local Lock
+
+### Catch up with Chrome Web Features
+* [x] Open Link to external URL
+* [x] Native Chrome Spell Check
+* [x] Simulate Chrome Right click handling
+
+
+### Security
+I have spent extra efforts on achieving with the following electron settings that 
+mitigated the risk of malicious code injection when `teamwork.gtomato.com` is compromised 
+```js
+  new BrowserWindow({
+    width: 1024,
+    height: 1024,
+    webPreferences: {
+      // security reason on running remote website
+      nodeIntegration: false,
+      // security reason on running remote website
+      allowRunningInsecureContent: false,
+      // security reason on running remote website
+      enableRemoteModule: false,
+      // Create a browser window with a sandboxed renderer.
+      // With this option enabled, the renderer must communicate via IPC to the main process in order to access node APIs.
+      // https://www.electronjs.org/docs/api/sandbox-option
+      sandbox: true,
+      contextIsolation: true,
+      preload: path.join(app.getAppPath(), '../main/preload.js'),
+    },
+  })
+```
+
+
 
 # Getting Started
 > A bare minimum project structure to get started developing with [`electron-webpack`](https://github.com/electron-userland/electron-webpack).

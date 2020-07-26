@@ -1,6 +1,7 @@
-import { BrowserWindow, Menu, MenuItem } from 'electron'
+import { BrowserWindow, Menu, MenuItem, app } from 'electron'
 import fs from 'fs'
 import path from 'path'
+import buildEditorContextMenu from 'electron-editor-context-menu'
 
 import { openUrlHandler } from './open-url-handler'
 import { config } from './config'
@@ -12,9 +13,18 @@ export async function createMainWindow() {
     width: 1024,
     height: 1024,
     webPreferences: {
-      nodeIntegration: true,
-      enableRemoteModule: true,
-      allowRunningInsecureContent: true,
+      // security reason on running remote website
+      nodeIntegration: false,
+      // security reason on running remote website
+      allowRunningInsecureContent: false,
+      // security reason on running remote website
+      enableRemoteModule: false,
+      // Create a browser window with a sandboxed renderer.
+      // With this option enabled, the renderer must communicate via IPC to the main process in order to access node APIs.
+      // https://www.electronjs.org/docs/api/sandbox-option
+      sandbox: true,
+      contextIsolation: true,
+      preload: path.join(app.getAppPath(), 'preload.js'),
     },
   })
 
@@ -74,6 +84,20 @@ export async function createMainWindow() {
     }
 
     menu.popup()
+  })
+
+  window.webContents.on('context-menu', (event, params) => {
+    // Only show the context menu in text editors.
+    if (!params.isEditable) return
+
+    const menu = buildEditorContextMenu()
+
+    // The 'contextmenu' event is emitted after 'selectionchange' has fired but possibly before the
+    // visible selection has changed. Try to wait to show the menu until after that, otherwise the
+    // visible selection will update after the menu dismisses and look weird.
+    setTimeout(function () {
+      menu.popup(window)
+    }, 30)
   })
 
   await window.loadURL(config.teamworkUrl)

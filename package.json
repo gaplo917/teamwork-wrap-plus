@@ -1,6 +1,7 @@
 {
   "name": "teamwork-wrapper",
-  "version": "3.3.0",
+  "productName": "Teamwork Wrap+",
+  "version": "3.4.0",
   "license": "MIT",
   "scripts": {
     "dev": "electron-webpack dev",

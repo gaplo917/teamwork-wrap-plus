@@ -9,6 +9,7 @@ const config = {
       patterns: [
         { from: 'src/main/inject/inject.js', to: 'inject' },
         { from: 'src/main/inject/dark-mode-fixes.css', to: 'inject' },
+        { from: 'src/main/preload.js', to: '' },
       ],
     }),
   ],

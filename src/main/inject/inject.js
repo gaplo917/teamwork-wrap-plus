@@ -1,9 +1,8 @@
 console.debug('running injected script')
-const electron = require('electron')
-const ipc = electron.ipcRenderer
-const remote = electron.remote
+// this ipc is isolated and exposed by main/preload.js
+const ipc = window.TWW.ipc
 
-const DEFAULT_SETTING = {
+const defaultSettings = {
   isDark: true,
   isBorderless: true,
   isBoldUsername: true,
@@ -18,7 +17,7 @@ class Storage {
   constructor() {
     const self = this
     this.onChangeHandlers = new Map()
-    this.settings = new Proxy(DEFAULT_SETTING, {
+    this.settings = new Proxy(defaultSettings, {
       get(target, name, receiver) {
         console.debug(`Getting ${name}`)
         return (window.localStorage.getItem(name) || (target[name] ? '1' : '0')) === '1'
@@ -26,8 +25,14 @@ class Storage {
       set(target, name, value, receiver) {
         const convertedValue = value ? '1' : '0'
         console.debug(`Settings ${name}=${convertedValue}`)
+
+        // update localstorage
         window.localStorage.setItem(name, convertedValue)
+
+        // send to main process
         ipc.send('application-settings', JSON.stringify(self.getApplicationSettings()))
+
+        // trigger registered handlers
         const handlers = self.onChangeHandlers.get(name) || []
         handlers.forEach(it => it(value))
       },
@@ -160,30 +165,9 @@ function registerBadgeHandling() {
   window.Notification = NotificationWrapper
 }
 
-function registerRightClickMenuHandling() {
-  console.debug('registerRightClickMenuHandling')
-
-  // `remote.require` since `Menu` is a main-process module.
-  const buildEditorContextMenu = remote.require('electron-editor-context-menu')
-
-  window.addEventListener('contextmenu', function (e) {
-    // Only show the context menu in text editors.
-    if (!e.target.closest('textarea, input, [contenteditable="true"]')) return
-
-    const menu = buildEditorContextMenu()
-
-    // The 'contextmenu' event is emitted after 'selectionchange' has fired but possibly before the
-    // visible selection has changed. Try to wait to show the menu until after that, otherwise the
-    // visible selection will update after the menu dismisses and look weird.
-    setTimeout(function () {
-      menu.popup(remote.getCurrentWindow())
-    }, 30)
-  })
-}
-
 function registerResetRecommendedSettings() {
   ipc.on('reset-recommended-settings', () => {
-    storage.settings = DEFAULT_SETTING
+    storage.settings = defaultSettings
   })
 }
 
@@ -302,9 +286,6 @@ registerBooleanStyleSheet('isBubbleDisplayDate', {
 
 // handle docking badge
 registerBadgeHandling()
-
-// handle right click menu
-registerRightClickMenuHandling()
 
 // handle recommended settings
 registerResetRecommendedSettings()
