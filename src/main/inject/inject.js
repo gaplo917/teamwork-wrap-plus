@@ -9,11 +9,11 @@ class Storage {
     this.onChangeHandlers = new Map()
     this.settings = new Proxy(
       {
-        isDark: false,
-        isBorderless: false,
-        isBoldUsername: false,
-        isBubbleDisplayDate: false,
-        isPingFang: false,
+        isDark: true,
+        isBorderless: true,
+        isBoldUsername: true,
+        isBubbleDisplayDate: true,
+        isPingFang: true,
         isNotoSans: false,
         isJFOpen: false,
         isSubpixel: false,
@@ -21,7 +21,7 @@ class Storage {
       {
         get(target, name, receiver) {
           console.debug(`Getting ${name}`)
-          return (window.localStorage.getItem(name) || '1') === '1'
+          return (window.localStorage.getItem(name) || (target[name] ? '1' : '0')) === '1'
         },
         set(target, name, value, receiver) {
           const convertedValue = value ? '1' : '0'
@@ -194,27 +194,27 @@ function registerResetRecommendedSettings() {
   })
 }
 
-registerDarkModeHandling()
-registerBooleanStyleSheet('isPingFang', {
-  css: `
+function registerFontHandling() {
+  registerBooleanStyleSheet('isPingFang', {
+    css: `
 * {
   font-family: 'PingFang HK', -apple-system, 'Helvetica Neue', BlinkMacSystemFont, 'Microsoft Yahei', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', sans-serif;
 }
   `,
-})
+  })
 
-// handle isNotoSans
-registerBooleanStyleSheet('isNotoSans', {
-  css: `
+  // handle isNotoSans
+  registerBooleanStyleSheet('isNotoSans', {
+    css: `
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+HK:wght@100;400;700&display=swap');
 * {
   font-family: 'Noto Sans HK', -apple-system, 'Helvetica Neue', BlinkMacSystemFont, 'Microsoft Yahei', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', sans-serif;
 }
   `,
-})
+  })
 
-registerBooleanStyleSheet('isJFOpen', {
-  css: `
+  registerBooleanStyleSheet('isJFOpen', {
+    css: `
 @font-face {
   font-family: 'JFOpen';
   font-display: swap;
@@ -224,29 +224,35 @@ registerBooleanStyleSheet('isJFOpen', {
   font-family: 'JFOpen', -apple-system, 'Helvetica Neue', BlinkMacSystemFont, 'Microsoft Yahei', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', sans-serif;
 }
   `,
-})
+  })
 
-//
-storage.on('isPingFang', value => {
-  if (value) {
-    storage.settings.isNotoSans = false
-    storage.settings.isJFOpen = false
-  }
-})
+  storage.on('isPingFang', value => {
+    if (value) {
+      storage.settings.isNotoSans = false
+      storage.settings.isJFOpen = false
+    }
+  })
 
-storage.on('isNotoSans', value => {
-  if (value) {
-    storage.settings.isPingFang = false
-    storage.settings.isJFOpen = false
-  }
-})
+  storage.on('isNotoSans', value => {
+    if (value) {
+      storage.settings.isPingFang = false
+      storage.settings.isJFOpen = false
+    }
+  })
 
-storage.on('isJFOpen', value => {
-  if (value) {
-    storage.settings.isPingFang = false
-    storage.settings.isNotoSans = false
-  }
-})
+  storage.on('isJFOpen', value => {
+    if (value) {
+      storage.settings.isPingFang = false
+      storage.settings.isNotoSans = false
+    }
+  })
+}
+
+// handle dark mode
+registerDarkModeHandling()
+
+// handle font
+registerFontHandling()
 
 // handle isSubpixel
 registerBooleanStyleSheet('isSubpixel', {
@@ -298,6 +304,12 @@ registerBooleanStyleSheet('isBubbleDisplayDate', {
 }
   `,
 })
+
+// handle docking badge
 registerBadgeHandling()
+
+// handle right click menu
 registerRightClickMenuHandling()
+
+// handle recommended settings
 registerResetRecommendedSettings()
