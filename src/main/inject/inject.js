@@ -9,7 +9,6 @@ const DEFAULT_SETTING = {
   isBoldUsername: true,
   isBubbleDisplayDate: true,
   isPingFang: true,
-  isHideUsernameInChat: true,
   isNotoSans: false,
   isJFOpen: false,
   isSubpixel: false,
@@ -276,7 +275,8 @@ registerBooleanStyleSheet('isBoldUsername', {
   css: `
 .RecentMessageView>.items .item>.content .subject,
 .Avatar > .texts > .displayName,
-.TopBar > .Me > .Avatar .displayName {
+.TopBar > .Me > .Avatar .displayName,
+.MessageViewItem.bubble > div.body > div.whoWhatWhen > div.who .displayName {
     font-weight: bold;
 }
   `,
@@ -294,15 +294,8 @@ registerBooleanStyleSheet('isBubbleDisplayDate', {
     background-color: rgb(230, 234, 238);
     padding: 4px 16px;
     border-radius: 20px;
+    font-weight: 700;
     color: black;
-}
-  `,
-})
-
-registerBooleanStyleSheet('isHideUsernameInChat', {
-  css: `
-.MessageViewItem.bubble.incoming + .MessageViewItem.bubble.incoming .whoWhatWhen .who {
-    display: none;
 }
   `,
 })
