@@ -63,10 +63,11 @@ ipcMain.on('application-settings', (event, data) => {
       createToggleItem('isBorderless', 'Border-less Mode'),
       createToggleItem('isBoldUsername', 'Bold Username'),
       createToggleItem('isBubbleDisplayDate', 'Bubble Display Date'),
+      createToggleItem('isHideUsernameInChat', 'Hide Unnecessary Username in Chat'),
       ...(isMac ? [createToggleItem('isPingFang', 'Ping Fang HK Font')] : []),
       createToggleItem('isNotoSans', 'Noto Sans HK Font'),
       createToggleItem('isJFOpen', 'JF Open Huninn Font'),
-      createToggleItem('isSubpixel', 'Subpixel Antialiased'),
+      createToggleItem('isSubpixel', 'Subpixel Antialiased Font Rendering'),
       {
         label: 'Reset to Recommended Settings',
         click: () => {

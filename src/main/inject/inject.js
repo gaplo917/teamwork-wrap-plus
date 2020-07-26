@@ -3,36 +3,36 @@ const electron = require('electron')
 const ipc = electron.ipcRenderer
 const remote = electron.remote
 
+const DEFAULT_SETTING = {
+  isDark: true,
+  isBorderless: true,
+  isBoldUsername: true,
+  isBubbleDisplayDate: true,
+  isPingFang: true,
+  isHideUsernameInChat: true,
+  isNotoSans: false,
+  isJFOpen: false,
+  isSubpixel: false,
+}
+
 class Storage {
   constructor() {
     const self = this
     this.onChangeHandlers = new Map()
-    this.settings = new Proxy(
-      {
-        isDark: true,
-        isBorderless: true,
-        isBoldUsername: true,
-        isBubbleDisplayDate: true,
-        isPingFang: true,
-        isNotoSans: false,
-        isJFOpen: false,
-        isSubpixel: false,
+    this.settings = new Proxy(DEFAULT_SETTING, {
+      get(target, name, receiver) {
+        console.debug(`Getting ${name}`)
+        return (window.localStorage.getItem(name) || (target[name] ? '1' : '0')) === '1'
       },
-      {
-        get(target, name, receiver) {
-          console.debug(`Getting ${name}`)
-          return (window.localStorage.getItem(name) || (target[name] ? '1' : '0')) === '1'
-        },
-        set(target, name, value, receiver) {
-          const convertedValue = value ? '1' : '0'
-          console.debug(`Settings ${name}=${convertedValue}`)
-          window.localStorage.setItem(name, convertedValue)
-          ipc.send('application-settings', JSON.stringify(self.getApplicationSettings()))
-          const handlers = self.onChangeHandlers.get(name) || []
-          handlers.forEach(it => it(value))
-        },
+      set(target, name, value, receiver) {
+        const convertedValue = value ? '1' : '0'
+        console.debug(`Settings ${name}=${convertedValue}`)
+        window.localStorage.setItem(name, convertedValue)
+        ipc.send('application-settings', JSON.stringify(self.getApplicationSettings()))
+        const handlers = self.onChangeHandlers.get(name) || []
+        handlers.forEach(it => it(value))
       },
-    )
+    })
 
     // send the application settings to main process for rendering the application menu
     ipc.send('application-settings', JSON.stringify(self.getApplicationSettings()))
@@ -184,13 +184,7 @@ function registerRightClickMenuHandling() {
 
 function registerResetRecommendedSettings() {
   ipc.on('reset-recommended-settings', () => {
-    storage.settings.isDark = true
-    storage.settings.isPingFang = true
-    storage.settings.isBoldUsername = true
-    storage.settings.isBorderless = true
-    storage.settings.isBubbleDisplayDate = true
-    storage.settings.isNotoSans = false
-    storage.settings.isSubpixel = false
+    storage.settings = DEFAULT_SETTING
   })
 }
 
@@ -301,6 +295,14 @@ registerBooleanStyleSheet('isBubbleDisplayDate', {
     padding: 4px 16px;
     border-radius: 20px;
     color: black;
+}
+  `,
+})
+
+registerBooleanStyleSheet('isHideUsernameInChat', {
+  css: `
+.MessageViewItem.bubble.incoming + .MessageViewItem.bubble.incoming .whoWhatWhen .who {
+    display: none;
 }
   `,
 })
