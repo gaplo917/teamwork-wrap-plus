@@ -1,6 +1,12 @@
 import { app, ipcMain, Menu } from 'electron'
+import electronDl from 'electron-dl'
 import { createApplicationMenu } from './create-application-menu'
 import { createMainWindow } from './create-main-window'
+
+// https://github.com/sindresorhus/electron-dl
+electronDl({
+  openFolderWhenDone: true,
+})
 
 // global reference to mainWindow (necessary to prevent window from being garbage collected)
 let mainWindow

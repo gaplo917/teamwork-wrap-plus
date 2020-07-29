@@ -33,6 +33,7 @@
   "dependencies": {
     "copy-webpack-plugin": "^6.0.1",
     "darkreader": "^4.9.15",
+    "electron-dl": "^3.0.1",
     "electron-editor-context-menu": "^1.1.1",
     "open": "^7.0.4",
     "source-map-support": "^0.5.12"
