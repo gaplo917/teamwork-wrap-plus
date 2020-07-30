@@ -21,7 +21,9 @@
 .GroupMemberEditor .items > .item > .people .Avatar .texts .title,
 .GroupEditor .basicSection .sectionTitle,
 .MessageBubble .FileView .DownloadableView .caption,
-input::placeholder
+input::placeholder,
+.GroupInfo .memberSection .MemberList .item .role,
+.Searcher .modal-content .modal-body .result > .spliter
 {
     color: #969696 !important;
 }
@@ -52,6 +54,13 @@ input::placeholder
     border-left-color: rgba(255, 255, 255, 0.1);
     border-right-color: rgba(255, 255, 255, 0.1);
     border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+.LoadingIcon > div {
+    color: #969696;
+    background-color: #969696;
+    border-color: #969696;
+    outline-color: #969696;
 }
 
 /*More contrast Background color */
