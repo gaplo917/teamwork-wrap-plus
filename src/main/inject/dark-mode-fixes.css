@@ -15,6 +15,7 @@
 .ContactableUserList .items .item .SimpleUserListItem .Avatar .title,
 .ContactableGroupList .items .item .SimpleGroupListItem .Avatar .title,
 .WelcomeView .contactListSummary, .WelcomeView .recentSummary,
+.WelcomeView .head,
 .GroupMemberPicker .items > .item .title,
 .GroupMemberEditor .fieldHeads > .item > .people .Avatar .texts .title,
 .GroupMemberEditor .items > .item > .people .Avatar .texts .title,
