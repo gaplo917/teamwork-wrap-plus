@@ -419,6 +419,12 @@ registerBooleanStyleSheet('isBorderless', {
 .ConversationView > .front > .NavigationBar + .WelcomeView {
     background-color: rgb(245, 245, 245);
 }
+
+input[type=text],
+input[type=search],
+input[type=textarea] {
+  background-color: rgb(245, 245, 245);
+}
   `,
 })
 
