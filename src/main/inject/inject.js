@@ -197,7 +197,7 @@ function registerFontHandling() {
 @font-face {
   font-family: 'JFOpen';
   font-display: swap;
-  src: url('https://cdn.jsdelivr.net/gh/justfont/open-huninn-font@v1.1/font/jf-openhuninn-1.1.ttf') format('truetype');
+  src: url('https://cdn.jsdelivr.net/gh/gaplo917/open-huninn-font@master/font/jf-openhuninn-1.1.ttf') format('truetype');
 }
 * {
   font-family: 'JFOpen', -apple-system, 'Helvetica Neue', BlinkMacSystemFont, 'Microsoft Yahei', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', sans-serif;
@@ -225,6 +225,172 @@ function registerFontHandling() {
       storage.settings.isNotoSans = false
     }
   })
+}
+
+// brain-less copy from https://jsfiddle.net/Xeoncross/4tUDk/
+const pasteHtmlAtCaret = html => {
+  let sel, range
+  if (window.getSelection) {
+    sel = window.getSelection()
+    if (sel.getRangeAt && sel.rangeCount) {
+      range = sel.getRangeAt(0)
+      range.deleteContents()
+
+      // Range.createContextualFragment() would be useful here but is
+      // non-standard and not supported in all browsers (IE9, for one)
+      const el = document.createElement('div')
+      el.innerHTML = html
+      let frag = document.createDocumentFragment(),
+        node,
+        lastNode
+      while ((node = el.firstChild)) {
+        lastNode = frag.appendChild(node)
+      }
+      range.insertNode(frag)
+
+      // Preserve the selection
+      if (lastNode) {
+        range = range.cloneRange()
+        range.setStartAfter(lastNode)
+        range.collapse(true)
+        sel.removeAllRanges()
+        sel.addRange(range)
+      }
+    }
+  }
+}
+
+function registerEmojiHandling() {
+  const scriptElement = document.createElement('script')
+  scriptElement.setAttribute('type', 'text/javascript')
+  scriptElement.setAttribute('src', 'https://cdn.jsdelivr.net/gh/gaplo917/emoji-mart-embed@master/dist/emoji-mart.js')
+
+  scriptElement.onload = () => {
+    window.emojiMart.definePicker('emoji-picker', {
+      color: '#7bb5f9',
+      native: true,
+      emojiTooltip: true,
+      showPreview: false,
+      showSkinTones: false,
+      theme: storage.settings.isDark ? 'dark' : 'light',
+      onClick: (emoji, event) => {
+        const el = document.getElementsByClassName('Editable')[0]
+        el.focus()
+        requestAnimationFrame(() => {
+          pasteHtmlAtCaret(emoji.native)
+        })
+      },
+    })
+  }
+  // add script to DOM
+  document.head.appendChild(scriptElement)
+
+  const style = document.createElement('style')
+  style.innerText = `
+emoji-picker {
+  position: absolute;
+  z-index: 1000;
+  right: 20px;
+  bottom: 70px;
+  border-radius: 8px;
+  box-shadow: 0px 0px 16px -8px rgba(0,0,0,0.75);
+  transition: all 150ms;
+  opacity: 0;
+}
+
+emoji-picker.show {
+  opacity: 1;
+}
+
+#emoji-trigger {
+  fill: #bbb;
+  stroke: #bbb;
+}
+
+#emoji-trigger.hovered {
+  fill: #7bb5f9;
+  stroke: #7bb5f9;
+  transition: all 150ms;
+}
+  `
+  // add style to DOM
+  document.head.appendChild(style)
+
+  // create emoji picker
+  const picker = document.createElement('emoji-picker')
+  document.body.prepend(picker)
+
+  let dismissEmojiPicker = null
+  const showEmojiPicker = () => {
+    document.getElementById('emoji-trigger').classList.add('hovered')
+    if (!picker.classList.contains('show')) {
+      picker.classList.add('show')
+    }
+  }
+  const cancelDismissEmojiPicker = () => {
+    if (dismissEmojiPicker != null) {
+      clearTimeout(dismissEmojiPicker)
+    }
+  }
+  const scheduleDismissEmojiPicker = () => {
+    cancelDismissEmojiPicker()
+    dismissEmojiPicker = setTimeout(() => {
+      picker.classList.remove('show')
+      document.getElementById('emoji-trigger').classList.remove('hovered')
+    }, 500)
+  }
+
+  picker.addEventListener('mouseenter', cancelDismissEmojiPicker)
+  picker.addEventListener('mouseleave', scheduleDismissEmojiPicker)
+
+  // add the css
+  const linkElement = document.createElement('link')
+  linkElement.rel = 'stylesheet'
+  linkElement.href = 'https://cdn.jsdelivr.net/gh/gaplo917/emoji-mart-embed@master/dist/emoji-mart.css'
+  document.head.appendChild(linkElement)
+
+  // Select the node that will be observed for mutations
+  const targetNode = document.getElementById('root')
+
+  // Options for the observer (which mutations to observe)
+  const config = { attributes: true, childList: true, subtree: true }
+
+  // Callback function to execute when mutations are observed
+  const callback = function (mutationsList, observer) {
+    // Use traditional 'for loops' for IE 11
+    for (let mutation of mutationsList) {
+      if (
+        mutation.type === 'childList' &&
+        mutation.addedNodes.length === 0 &&
+        mutation.target &&
+        mutation.target.className === 'ChatView' &&
+        mutation.nextSibling &&
+        mutation.nextSibling.className === 'InputBox'
+      ) {
+        const adjacentElement = document.getElementsByClassName('file')[0]
+        if (adjacentElement) {
+          adjacentElement.insertAdjacentHTML(
+            'beforebegin',
+            `
+<svg id="emoji-trigger" style="margin: 5px" xmlns="http://www.w3.org/2000/svg" width="27" height="27" viewBox="0 0 512 512"><title>ionicons-v5-i</title><circle cx="184" cy="232" r="24"/><path d="M256.05,384c-45.42,0-83.62-29.53-95.71-69.83A8,8,0,0,1,168.16,304H343.85a8,8,0,0,1,7.82,10.17C339.68,354.47,301.47,384,256.05,384Z"/><circle cx="328" cy="232" r="24"/><circle cx="256" cy="256" r="208" style="fill:none;stroke-miterlimit:10;stroke-width:20px"/></svg>
+        `,
+          )
+          // require to get it in runtime when the dom tree has changed
+          const emojiTrigger = document.getElementById('emoji-trigger')
+          emojiTrigger.addEventListener('mouseenter', showEmojiPicker)
+          emojiTrigger.addEventListener('mousemove', showEmojiPicker)
+          emojiTrigger.addEventListener('mouseleave', scheduleDismissEmojiPicker)
+        }
+      }
+    }
+  }
+
+  // Create an observer instance linked to the callback function
+  const observer = new MutationObserver(callback)
+
+  // Start observing the target node for configured mutations
+  // this observer don't need to disconnect
+  observer.observe(targetNode, config)
 }
 
 // handle dark mode
@@ -291,3 +457,6 @@ registerBadgeHandling()
 
 // handle recommended settings
 registerResetRecommendedSettings()
+
+// handle emoji features
+registerEmojiHandling()

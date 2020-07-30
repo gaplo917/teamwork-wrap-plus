@@ -62,3 +62,24 @@ input::placeholder
 .ConversationView > .front > .NavigationBar + .WelcomeView {
     background-color: rgb(36, 39, 41);
 }
+
+.emoji-mart-dark .emoji-mart-category-label span {
+    background-color: rgb(41, 44, 46);
+}
+.emoji-mart-dark {
+    background-color: rgb(41, 44, 46);
+}
+
+.emoji-mart-dark .emoji-mart-search input {
+    background-color: rgb(46, 49, 51);
+}
+
+#emoji-trigger {
+    fill: #969696;
+    stroke: #969696;
+}
+
+#emoji-trigger.hovered {
+    fill: #7bb5f9;
+    stroke: #7bb5f9;
+}
