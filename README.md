@@ -6,23 +6,25 @@ Also bring in some interesting UI enhancements.
 ### Enhancement
 * [x] Dark Mode
 * [x] Native Badges
-* [x] Add Border-less Setting
-* [x] Add Bold Username Setting
-* [x] Add Bubble Display Date Setting
-* [x] Add Ping Fang HK Setting
-* [x] Add Noto Sans HK Setting
-* [x] Add JF Open Huninn setting
-* [x] Add Subpixel antialiased font rendering setting
+* [x] Emoji Keyboard
+* [x] Border-less Setting
+* [x] Bold Username Setting
+* [x] Bubble Display Date Setting
+* [x] Ping Fang HK Font Setting
+* [x] Noto Sans HK Font Setting
+* [x] JF Open Huninn Font setting
+* [x] Subpixel Antialiased Font Rendering Setting
 * [] Secure Local Lock
 
 ### Catch up with Chrome Web Features
 * [x] Open Link to external URL
 * [x] Native Chrome Spell Check
 * [x] Simulate Chrome Right click handling
+* [x] Auto save downloaded file to ~/Download folder without prompting dialog
 
 
 ### Security
-I have spent extra efforts on achieving with the following electron settings that 
+This project has spent extra efforts on achieving with the following electron settings that 
 mitigated the risk of malicious code injection when `teamwork.gtomato.com` is compromised 
 ```js
   new BrowserWindow({
@@ -51,10 +53,14 @@ mitigated the risk of malicious code injection when `teamwork.gtomato.com` is co
 > A bare minimum project structure to get started developing with [`electron-webpack`](https://github.com/electron-userland/electron-webpack).
 
 ```bash
+# Install
+yarn install
+
 # run application in development mode
 yarn dev
 
-# create production build
+# create production build. 
+# You need a developer certificate and apple id account(check sample.env)
 yarn dist:dir
 ```
 
