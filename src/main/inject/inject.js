@@ -369,7 +369,9 @@ emoji-picker.show {
         mutation.nextSibling.className === 'InputBox'
       ) {
         const adjacentElement = document.getElementsByClassName('file')[0]
-        if (adjacentElement) {
+        const hasEmojiTrigger = !!document.getElementById('emoji-trigger')
+
+        if (adjacentElement && !hasEmojiTrigger) {
           adjacentElement.insertAdjacentHTML(
             'beforebegin',
             `
