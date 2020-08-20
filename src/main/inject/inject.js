@@ -177,7 +177,7 @@ function registerFontHandling() {
   registerBooleanStyleSheet('isPingFang', {
     css: `
 * {
-  font-family: 'PingFang HK', "Apple Color Emoji", -apple-system, 'Helvetica Neue', BlinkMacSystemFont, 'Microsoft Yahei', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', sans-serif;
+  font-family: 'PingFang HK', -apple-system, 'Helvetica Neue', BlinkMacSystemFont, 'Microsoft Yahei', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', sans-serif, "Apple Color Emoji";
 }
   `,
   })
@@ -187,7 +187,7 @@ function registerFontHandling() {
     css: `
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+HK:wght@100;400;700&display=swap');
 * {
-  font-family: 'Noto Sans HK', "Apple Color Emoji", -apple-system, 'Helvetica Neue', BlinkMacSystemFont, 'Microsoft Yahei', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', sans-serif;
+  font-family: 'Noto Sans HK', -apple-system, 'Helvetica Neue', BlinkMacSystemFont, 'Microsoft Yahei', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', sans-serif, "Apple Color Emoji";
 }
   `,
   })
@@ -200,7 +200,7 @@ function registerFontHandling() {
   src: url('https://cdn.jsdelivr.net/gh/gaplo917/open-huninn-font@master/font/jf-openhuninn-1.1.ttf') format('truetype');
 }
 * {
-  font-family: 'JFOpen', "Apple Color Emoji", -apple-system, 'Helvetica Neue', BlinkMacSystemFont, 'Microsoft Yahei', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', sans-serif;
+  font-family: 'JFOpen', -apple-system, 'Helvetica Neue', BlinkMacSystemFont, 'Microsoft Yahei', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', sans-serif, "Apple Color Emoji";
 }
   `,
   })
