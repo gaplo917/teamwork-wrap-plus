@@ -13,8 +13,10 @@ let mainWindow
 
 // close all window before user trigger quit
 app.on('before-quit', () => {
-  mainWindow.removeAllListeners('close')
-  mainWindow.close()
+  if (mainWindow) {
+    mainWindow.removeAllListeners('close')
+    mainWindow.close()
+  }
 })
 
 // quit application when all windows are closed
