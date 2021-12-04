@@ -29,7 +29,8 @@ const injectedCss = injectedCode['CSS']
  * gt: string,
  * moon: string,
  * roomBooking: string,
- * supportTicket: string
+ * supportTicket: string,
+ * emojiTrigger: string
  * }} */
 const injectedSvg = injectedCode['SVG']
 
@@ -282,7 +283,7 @@ const pasteHtmlAtCaret = html => {
 /**
  * Emit CustomEvent('onRootMutate', { detail: MutationRecord[] }) when there is a change in root element
  */
-const registerMutationObserver = () => {
+const registerRootNodeMutationObserver = () => {
   // Select the node that will be observed for mutations
   const targetNode = document.getElementById('root')
 
@@ -304,6 +305,38 @@ const registerMutationObserver = () => {
   observer.observe(targetNode, config)
 }
 
+const registerAutoRefreshWhenTeamworkTimeoutHandling = () => {
+  let dropDownCount = 0
+  new MutationObserver(function (mutationsList, observer) {
+    for (let mutation of mutationsList) {
+      if (
+        mutation.type === 'childList' &&
+        mutation.addedNodes.length === 1 &&
+        mutation.addedNodes[0].getAttribute('role') === 'dialog'
+      ) {
+        const refreshButton = mutation.addedNodes[0].querySelector('.btn.btn-primary')
+        if (refreshButton?.innerText?.toLowerCase() === 'refresh') {
+          // auto toggle the refresh button when timeout
+          refreshButton?.click()
+        }
+      }
+
+      if (
+        mutation.type === 'childList' &&
+        mutation.addedNodes.length === 1 &&
+        mutation.addedNodes[0].className === 'dropdown bootstrapMenu'
+      ) {
+        if (dropDownCount >= 1) {
+          // toggle the refresh button
+          mutation.addedNodes[0].remove()
+        } else {
+          dropDownCount++
+        }
+      }
+    }
+  }).observe(document.body, { childList: true })
+}
+
 function registerFunctionalButtons() {
   window.addEventListener(
     'onRootMutate',
@@ -314,22 +347,22 @@ function registerFunctionalButtons() {
           mutation.removedNodes.length === 1 &&
           mutation.removedNodes[0]?.className === 'SimpleSplashView'
         ) {
-          const adjacentElement = mutation.target?.querySelector('.action.task')
-          const addButton = ({ id, onClick, icon }) => {
+          const addButton = ({ id, onClick, icon, adjacentClass = '.action.task' }) => {
+            const adjacentElement = mutation.target?.querySelector(adjacentClass)
+
             if (adjacentElement && !document.getElementById(id)) {
               adjacentElement.insertAdjacentHTML(
                 'beforebegin',
                 `<div class="action task"><div id="${id}" class="icon" style="fill:#fff">${icon}</div></div>`,
               )
               // require to get it in runtime when the dom tree has changed
-              const el = document.getElementById(id)
-
-              el.addEventListener('click', onClick)
+              document.getElementById(id)?.addEventListener('click', onClick)
             }
           }
 
           addButton({
             id: 'dark-toggle',
+            adjacentClass: '.action.more',
             onClick: evt => {
               if (storage.settings.isDark) {
                 storage.settings.isDark = false
@@ -344,17 +377,13 @@ function registerFunctionalButtons() {
             icon: storage.settings.isDark ? injectedSvg.sunny : injectedSvg.moon,
           })
 
-          // dashboard button
+          // os ticket button
           addButton({
-            id: 'dashboard',
+            id: 'os-ticket',
             onClick: () => {
-              window.open(
-                `${urls.dashboard}/?appKey=${window.options.client.appKey}&appToken=${window.options.client.token}`,
-                null,
-                'width=1440,height=900',
-              )
+              window.open(urls.supportTicket, null, 'width=1440,height=900')
             },
-            icon: injectedSvg.gt,
+            icon: injectedSvg.supportTicket,
           })
 
           // room booking button
@@ -370,13 +399,17 @@ function registerFunctionalButtons() {
             icon: injectedSvg.roomBooking,
           })
 
-          // os ticket button
+          // dashboard button
           addButton({
-            id: 'os-ticket',
+            id: 'dashboard',
             onClick: () => {
-              window.open(urls.supportTicket, null, 'width=1440,height=900')
+              window.open(
+                `${urls.dashboard}/?appKey=${window.options.client.appKey}&appToken=${window.options.client.token}`,
+                null,
+                'width=1440,height=900',
+              )
             },
-            icon: injectedSvg.supportTicket,
+            icon: injectedSvg.gt,
           })
         }
       }
@@ -395,10 +428,10 @@ function registerEmojiHandling() {
     theme: storage.settings.isDark ? 'dark' : 'light',
     onClick: (emoji, event) => {
       const el = document.getElementsByClassName('Editable')[0]
-      el.focus()
+      el?.focus()
 
       // simulate an input event
-      el.dispatchEvent(new Event('input'))
+      el?.dispatchEvent(new Event('input'))
       requestAnimationFrame(() => {
         pasteHtmlAtCaret(emoji.native)
       })
@@ -417,7 +450,7 @@ function registerEmojiHandling() {
 
   let dismissEmojiPicker = null
   const showEmojiPicker = () => {
-    document.getElementById('emoji-trigger').classList.add('hovered')
+    document.getElementById('emoji-trigger')?.classList.add('hovered')
     if (!picker?.classList.contains('show')) {
       picker?.classList.add('show')
     }
@@ -431,7 +464,7 @@ function registerEmojiHandling() {
     cancelDismissEmojiPicker()
     dismissEmojiPicker = setTimeout(() => {
       picker?.classList.remove('show')
-      document.getElementById('emoji-trigger')?.classList?.remove('hovered')
+      document.getElementById('emoji-trigger')?.classList.remove('hovered')
     }, 500)
   }
 
@@ -471,6 +504,11 @@ function registerEmojiHandling() {
   )
 }
 
+/**
+ * Handled two scenarios
+ * 1. update side bar chat box when editing draft
+ * 2. update side bar chat box when scrolling in a virtual list
+ */
 function registerDraftHandling() {
   const displayNameIdMap = new Map()
   const idDisplayNameMap = new Map()
@@ -555,6 +593,7 @@ function registerDraftHandling() {
           mutation.target?.className === 'ReactVirtualized__Grid__innerScrollContainer' ||
           mutation.target?.className === 'ReactVirtualized__Grid ReactVirtualized__List'
         ) {
+          // handle virtual list scrolling will flush the html without draft
           updateChatBoxDebounce(() => {
             document.querySelectorAll('.ReactVirtualized__List .item').forEach((chatBox, index, parent) => {
               // just schedule the UI change for next frame to keep the application smooth
@@ -688,12 +727,19 @@ function registerXHRInterceptor() {
   }
 }
 
+// register XHR intercept the dispatch CustomEvent for post-processing
 registerXHRInterceptor()
 
-registerMutationObserver()
+// register DOM change listener
+registerRootNodeMutationObserver()
 
+// register teamwork timeout auto refresh
+registerAutoRefreshWhenTeamworkTimeoutHandling()
+
+// add draft handling
 registerDraftHandling()
 
+// add new functional buttons to menu bar
 registerFunctionalButtons()
 
 // handle dark mode
