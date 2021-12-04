@@ -1,0 +1,6 @@
+.RecentMessageView>.items .item>.content .subject,
+.Avatar > .texts > .displayName,
+.TopBar > .Me > .Avatar .displayName,
+.MessageViewItem.bubble > div.body > div.whoWhatWhen > div.who .displayName {
+    font-weight: bold;
+}

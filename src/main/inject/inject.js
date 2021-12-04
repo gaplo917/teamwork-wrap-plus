@@ -1,6 +1,37 @@
 console.debug('running injected script')
 // this ipc is isolated and exposed by main/preload.js
 const ipc = window.TWW.ipc
+const injectedCode = window.injectedCode
+const urls = {
+  dashboard: 'https://web.dashboard.gtomato.com',
+  roomBooking: 'https://web.dashboard.gtomato.com/room-booking/standalone',
+  supportTicket: 'https://osticket.gtomato.com/open.php',
+}
+/**
+ * Injection happens in create-main-window.js
+ * @type {{
+ * isBoldUsername: string,
+ * isBorderless: string,
+ * isBubbleDisplayDate: string,
+ * isJFOpen: string,
+ * isNotoSans: string,
+ * isPingFang: string,
+ * isSubpixel: string,
+ * emojiMart: string,
+ * emojiPicker: string,
+ * darkModeFixes: string,
+ * }} */
+const injectedCss = injectedCode['CSS']
+
+/**
+ * Injection happens in create-main-window.js
+ * @type {{
+ * gt: string,
+ * moon: string,
+ * roomBooking: string,
+ * supportTicket: string
+ * }} */
+const injectedSvg = injectedCode['SVG']
 
 const defaultSettings = {
   isDark: true,
@@ -62,14 +93,24 @@ class Storage {
   }
 }
 
+/**
+ *
+ * @returns {(function(*, *=): void)|*}
+ */
+function createDebounce() {
+  let scheduledToken = null
+  return (fn, ms) => {
+    clearTimeout(scheduledToken)
+    scheduledToken = setTimeout(() => {
+      fn()
+    }, ms)
+  }
+}
+
 const storage = new Storage()
 
 function registerDarkModeHandling() {
   console.debug('registerDarkModeHandling')
-
-  const darkReaderScript = document.createElement('script')
-  darkReaderScript.setAttribute('type', 'text/javascript')
-  darkReaderScript.setAttribute('src', 'https://unpkg.com/darkreader@4.9.15/darkreader.js')
 
   const updateUI = isDark => {
     if (isDark) {
@@ -83,7 +124,7 @@ function registerDarkModeHandling() {
         },
         {
           invert: [],
-          css: darkModeFixes, // this variable is injected from main process
+          css: injectedCss.darkModeFixes, // this variable is injected from main process
         },
       )
     } else {
@@ -91,13 +132,9 @@ function registerDarkModeHandling() {
     }
   }
 
-  darkReaderScript.onload = () => {
-    updateUI(storage.settings.isDark)
-  }
+  updateUI(storage.settings.isDark)
 
   // add script to DOM
-  document.head.appendChild(darkReaderScript)
-
   storage.on('isDark', value => {
     updateUI(value)
   })
@@ -137,8 +174,8 @@ function registerBadgeHandling() {
 
   let lastTitle = ''
 
-  // just in case the notification hook not working
-  setInterval(() => updateBadge(), 5000)
+  // initial update the badge
+  setTimeout(() => updateBadge(), 1000)
 
   function updateBadge() {
     const title = window.document.title
@@ -175,34 +212,16 @@ function registerResetRecommendedSettings() {
 
 function registerFontHandling() {
   registerBooleanStyleSheet('isPingFang', {
-    css: `
-* {
-  font-family: 'PingFang HK', -apple-system, 'Helvetica Neue', BlinkMacSystemFont, 'Microsoft Yahei', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', sans-serif, "Apple Color Emoji";
-}
-  `,
+    css: injectedCss.isPingFang,
   })
 
   // handle isNotoSans
   registerBooleanStyleSheet('isNotoSans', {
-    css: `
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+HK:wght@100;400;700&display=swap');
-* {
-  font-family: 'Noto Sans HK', -apple-system, 'Helvetica Neue', BlinkMacSystemFont, 'Microsoft Yahei', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', sans-serif, "Apple Color Emoji";
-}
-  `,
+    css: injectedCss.isNotoSans,
   })
 
   registerBooleanStyleSheet('isJFOpen', {
-    css: `
-@font-face {
-  font-family: 'JFOpen';
-  font-display: swap;
-  src: url('https://cdn.jsdelivr.net/gh/gaplo917/open-huninn-font@master/font/jf-openhuninn-1.1.ttf') format('truetype');
-}
-* {
-  font-family: 'JFOpen', -apple-system, 'Helvetica Neue', BlinkMacSystemFont, 'Microsoft Yahei', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', sans-serif, "Apple Color Emoji";
-}
-  `,
+    css: injectedCss.isJFOpen,
   })
 
   storage.on('isPingFang', value => {
@@ -260,62 +279,137 @@ const pasteHtmlAtCaret = html => {
   }
 }
 
+/**
+ * Emit CustomEvent('onRootMutate', { detail: MutationRecord[] }) when there is a change in root element
+ */
+const registerMutationObserver = () => {
+  // Select the node that will be observed for mutations
+  const targetNode = document.getElementById('root')
+
+  // Options for the observer (which mutations to observe)
+  const config = { attributes: true, childList: true, subtree: true }
+
+  // Create an observer instance linked to the callback function
+  const observer = new MutationObserver(function (mutationsList, observer) {
+    window.dispatchEvent(
+      new CustomEvent('onRootMutate', {
+        bubbles: true,
+        detail: mutationsList,
+      }),
+    )
+  })
+
+  // Start observing the target node for configured mutations
+  // this observer don't need to disconnect
+  observer.observe(targetNode, config)
+}
+
+function registerFunctionalButtons() {
+  window.addEventListener(
+    'onRootMutate',
+    ({ detail: mutationsList }) => {
+      for (let mutation of mutationsList) {
+        if (
+          mutation.type === 'childList' &&
+          mutation.removedNodes.length === 1 &&
+          mutation.removedNodes[0]?.className === 'SimpleSplashView'
+        ) {
+          const adjacentElement = mutation.target?.querySelector('.action.task')
+          const addButton = ({ id, onClick, icon }) => {
+            if (adjacentElement && !document.getElementById(id)) {
+              adjacentElement.insertAdjacentHTML(
+                'beforebegin',
+                `<div class="action task"><div id="${id}" class="icon" style="fill:#fff">${icon}</div></div>`,
+              )
+              // require to get it in runtime when the dom tree has changed
+              const el = document.getElementById(id)
+
+              el.addEventListener('click', onClick)
+            }
+          }
+
+          addButton({
+            id: 'dark-toggle',
+            onClick: evt => {
+              if (storage.settings.isDark) {
+                storage.settings.isDark = false
+                storage.settings.isBorderless = false
+                evt.target.outerHTML = injectedSvg.moon
+              } else {
+                storage.settings.isDark = true
+                storage.settings.isBorderless = true
+                evt.target.outerHTML = injectedSvg.sunny
+              }
+            },
+            icon: storage.settings.isDark ? injectedSvg.sunny : injectedSvg.moon,
+          })
+
+          // dashboard button
+          addButton({
+            id: 'dashboard',
+            onClick: () => {
+              window.open(
+                `${urls.dashboard}/?appKey=${window.options.client.appKey}&appToken=${window.options.client.token}`,
+                null,
+                'width=1440,height=900',
+              )
+            },
+            icon: injectedSvg.gt,
+          })
+
+          // room booking button
+          addButton({
+            id: 'room-booking',
+            onClick: () => {
+              window.open(
+                `${urls.roomBooking}?appKey=${window.options.client.appKey}&appToken=${window.options.client.token}`,
+                null,
+                'width=1440,height=900',
+              )
+            },
+            icon: injectedSvg.roomBooking,
+          })
+
+          // os ticket button
+          addButton({
+            id: 'os-ticket',
+            onClick: () => {
+              window.open(urls.supportTicket, null, 'width=1440,height=900')
+            },
+            icon: injectedSvg.supportTicket,
+          })
+        }
+      }
+    },
+    { passive: true },
+  )
+}
+
 function registerEmojiHandling() {
-  const scriptElement = document.createElement('script')
-  scriptElement.setAttribute('type', 'text/javascript')
-  scriptElement.setAttribute('src', 'https://cdn.jsdelivr.net/gh/gaplo917/emoji-mart-embed@master/dist/emoji-mart.js')
+  window.emojiMart.definePicker('emoji-picker', {
+    color: '#7bb5f9',
+    native: true,
+    emojiTooltip: true,
+    showPreview: false,
+    showSkinTones: false,
+    theme: storage.settings.isDark ? 'dark' : 'light',
+    onClick: (emoji, event) => {
+      const el = document.getElementsByClassName('Editable')[0]
+      el.focus()
 
-  scriptElement.onload = () => {
-    window.emojiMart.definePicker('emoji-picker', {
-      color: '#7bb5f9',
-      native: true,
-      emojiTooltip: true,
-      showPreview: false,
-      showSkinTones: false,
-      theme: storage.settings.isDark ? 'dark' : 'light',
-      onClick: (emoji, event) => {
-        const el = document.getElementsByClassName('Editable')[0]
-        el.focus()
-        requestAnimationFrame(() => {
-          pasteHtmlAtCaret(emoji.native)
-        })
-      },
-    })
-  }
-  // add script to DOM
-  document.head.appendChild(scriptElement)
+      // simulate an input event
+      el.dispatchEvent(new Event('input'))
+      requestAnimationFrame(() => {
+        pasteHtmlAtCaret(emoji.native)
+      })
+    },
+  })
 
-  const style = document.createElement('style')
-  style.innerText = `
-emoji-picker {
-  position: absolute;
-  z-index: 0;
-  right: 20px;
-  bottom: 70px;
-  border-radius: 8px;
-  box-shadow: 0px 0px 16px -8px rgba(0,0,0,0.75);
-  transition: all 150ms;
-  opacity: 0;
-}
+  const emojiPickerStyleEl = document.createElement('style')
+  emojiPickerStyleEl.innerText = injectedCss.emojiPicker
 
-emoji-picker.show {
-  opacity: 1;
-  z-index: 1000;
-}
-
-#emoji-trigger {
-  fill: #bbb;
-  stroke: #bbb;
-}
-
-#emoji-trigger.hovered {
-  fill: #7bb5f9;
-  stroke: #7bb5f9;
-  transition: all 150ms;
-}
-  `
   // add style to DOM
-  document.head.appendChild(style)
+  document.head.appendChild(emojiPickerStyleEl)
 
   // create emoji picker
   const picker = document.createElement('emoji-picker')
@@ -324,8 +418,8 @@ emoji-picker.show {
   let dismissEmojiPicker = null
   const showEmojiPicker = () => {
     document.getElementById('emoji-trigger').classList.add('hovered')
-    if (!picker.classList.contains('show')) {
-      picker.classList.add('show')
+    if (!picker?.classList.contains('show')) {
+      picker?.classList.add('show')
     }
   }
   const cancelDismissEmojiPicker = () => {
@@ -336,8 +430,8 @@ emoji-picker.show {
   const scheduleDismissEmojiPicker = () => {
     cancelDismissEmojiPicker()
     dismissEmojiPicker = setTimeout(() => {
-      picker.classList.remove('show')
-      document.getElementById('emoji-trigger').classList.remove('hovered')
+      picker?.classList.remove('show')
+      document.getElementById('emoji-trigger')?.classList?.remove('hovered')
     }, 500)
   }
 
@@ -345,56 +439,262 @@ emoji-picker.show {
   picker.addEventListener('mouseleave', scheduleDismissEmojiPicker)
 
   // add the css
-  const linkElement = document.createElement('link')
-  linkElement.rel = 'stylesheet'
-  linkElement.href = 'https://cdn.jsdelivr.net/gh/gaplo917/emoji-mart-embed@master/dist/emoji-mart.css'
-  document.head.appendChild(linkElement)
+  const emojiMartStylEl = document.createElement('style')
+  emojiMartStylEl.innerText = injectedCss.emojiMart
+  document.head.appendChild(emojiMartStylEl)
 
-  // Select the node that will be observed for mutations
-  const targetNode = document.getElementById('root')
+  window.addEventListener(
+    'onRootMutate',
+    ({ detail: mutationsList }) => {
+      for (let mutation of mutationsList) {
+        if (
+          mutation.type === 'childList' &&
+          mutation.addedNodes.length === 0 &&
+          mutation.target?.className === 'ChatView' &&
+          mutation.nextSibling?.className === 'InputBox'
+        ) {
+          const adjacentElement = document.getElementsByClassName('file')[0]
+          const hasEmojiTrigger = !!document.getElementById('emoji-trigger')
 
-  // Options for the observer (which mutations to observe)
-  const config = { attributes: true, childList: true, subtree: true }
-
-  // Callback function to execute when mutations are observed
-  const callback = function (mutationsList, observer) {
-    // Use traditional 'for loops' for IE 11
-    for (let mutation of mutationsList) {
-      if (
-        mutation.type === 'childList' &&
-        mutation.addedNodes.length === 0 &&
-        mutation.target &&
-        mutation.target.className === 'ChatView' &&
-        mutation.nextSibling &&
-        mutation.nextSibling.className === 'InputBox'
-      ) {
-        const adjacentElement = document.getElementsByClassName('file')[0]
-        const hasEmojiTrigger = !!document.getElementById('emoji-trigger')
-
-        if (adjacentElement && !hasEmojiTrigger) {
-          adjacentElement.insertAdjacentHTML(
-            'beforebegin',
-            `
-<svg id="emoji-trigger" style="margin: 5px" xmlns="http://www.w3.org/2000/svg" width="27" height="27" viewBox="0 0 512 512"><title>ionicons-v5-i</title><circle cx="184" cy="232" r="24"/><path d="M256.05,384c-45.42,0-83.62-29.53-95.71-69.83A8,8,0,0,1,168.16,304H343.85a8,8,0,0,1,7.82,10.17C339.68,354.47,301.47,384,256.05,384Z"/><circle cx="328" cy="232" r="24"/><circle cx="256" cy="256" r="208" style="fill:none;stroke-miterlimit:10;stroke-width:20px"/></svg>
-        `,
-          )
-          // require to get it in runtime when the dom tree has changed
-          const emojiTrigger = document.getElementById('emoji-trigger')
-          emojiTrigger.addEventListener('mouseenter', showEmojiPicker)
-          emojiTrigger.addEventListener('mousemove', showEmojiPicker)
-          emojiTrigger.addEventListener('mouseleave', scheduleDismissEmojiPicker)
+          if (adjacentElement && !hasEmojiTrigger) {
+            adjacentElement.insertAdjacentHTML('beforebegin', injectedSvg.emojiTrigger)
+            // require to get it in runtime when the dom tree has changed
+            const emojiTrigger = document.getElementById('emoji-trigger')
+            emojiTrigger.addEventListener('mouseenter', showEmojiPicker)
+            emojiTrigger.addEventListener('mousemove', showEmojiPicker)
+            emojiTrigger.addEventListener('mouseleave', scheduleDismissEmojiPicker)
+          }
         }
       }
+    },
+    { passive: true },
+  )
+}
+
+function registerDraftHandling() {
+  const displayNameIdMap = new Map()
+  const idDisplayNameMap = new Map()
+  const idDisplayTypeMap = new Map()
+  const chatBoxMessageMap = new Map()
+  let currentUserId = null
+  const uid = () => displayNameIdMap.get(document.querySelector('#root .NavigationBar .Avatar .displayName').innerHTML)
+  const chatBoxKey = id => `${idDisplayTypeMap.get(id)}${id}`
+  const updateChatBoxDebounce = createDebounce()
+
+  window.addEventListener(
+    'onRootMutate',
+    ({ detail: mutationsList }) => {
+      for (let mutation of mutationsList) {
+        if (
+          mutation.type === 'childList' &&
+          mutation.addedNodes.length === 0 &&
+          mutation.target &&
+          mutation.target.className === 'ChatView' &&
+          mutation.nextSibling &&
+          mutation.nextSibling.className === 'InputBox'
+        ) {
+          const editArea = mutation.target.querySelector('.Editable')
+          const debounce = createDebounce()
+          const id = uid()
+          const cbKey = chatBoxKey(id)
+
+          if (editArea) {
+            // register to write draft the localStorage
+            editArea.addEventListener(
+              'input',
+              event => {
+                // event handling code for sane browsers
+                const value = event.target.innerHTML
+
+                debounce(() => {
+                  window.localStorage.setItem(cbKey, value)
+
+                  const chatBox = document.querySelector(`.item[data-conversation-id="${cbKey}"]`)
+                  const memberEl = chatBox?.querySelector('.who > .member')
+                  const textEl = chatBox?.querySelector('.what > .text, .what > .nonText')
+
+                  if (value === '') {
+                    // the draft is empty, rollback the html
+                    const senderId = chatBoxMessageMap.get(cbKey)?.senderId
+                    const displayName = senderId === currentUserId ? 'You' : idDisplayNameMap.get(senderId)
+
+                    if (id === senderId && memberEl) {
+                      // remove if there is a redundant element
+                      memberEl.remove()
+                    } else if (memberEl) {
+                      memberEl.innerHTML = `${displayName}:`
+                    }
+
+                    if (textEl) {
+                      const messageMeta = chatBoxMessageMap.get(cbKey)?.meta
+                      // TODO: identify the meta data type for image, video, voice, etc.
+                      textEl.innerHTML = messageMeta?.content ?? `[sent ${messageMeta?.file?.length} file(s)]`
+                    }
+                  } else {
+                    if (memberEl) {
+                      memberEl.innerHTML = '✏️ You:'
+                    } else {
+                      chatBox
+                        ?.querySelector('.subject')
+                        ?.insertAdjacentHTML('afterend', `<div class="who"><span class="member">✏️ You:</span></div>`)
+                    }
+                    if (textEl) {
+                      textEl.innerHTML = value
+                    }
+                  }
+                }, 150)
+              },
+              { passive: true },
+            )
+
+            // restore the draft
+            editArea.innerHTML = window.localStorage.getItem(cbKey) || ''
+          }
+        }
+        if (
+          mutation.target?.className === 'ReactVirtualized__Grid__innerScrollContainer' ||
+          mutation.target?.className === 'ReactVirtualized__Grid ReactVirtualized__List'
+        ) {
+          updateChatBoxDebounce(() => {
+            document.querySelectorAll('.ReactVirtualized__List .item').forEach((chatBox, index, parent) => {
+              // just schedule the UI change for next frame to keep the application smooth
+              requestAnimationFrame(() => {
+                const cbKey = parent[index].getAttribute('data-conversation-id')
+                const savedDraft = window.localStorage.getItem(cbKey)
+
+                if (!savedDraft || savedDraft === '') {
+                  return
+                }
+
+                const memberEl = chatBox?.querySelector('.who > .member')
+                const textEl = chatBox?.querySelector('.what > .text, .what > .nonText')
+                if (memberEl) {
+                  memberEl.innerHTML = '✏️ You:'
+                }
+                if (textEl) {
+                  textEl.innerHTML = savedDraft
+                }
+              })
+            })
+          }, 16)
+        }
+      }
+    },
+    { passive: true },
+  )
+
+  // get the intercepted response and build up the data we need for draft notes handling
+  window.addEventListener(
+    'onXHRResponse',
+    ({ detail: { method, url, responseText } }) => {
+      if (!responseText) return
+      const json = JSON.parse(responseText)
+
+      if (url.endsWith('api/group')) {
+        if (json?.data && Array.isArray(json.data)) {
+          json.data.forEach(group => {
+            displayNameIdMap.set(group.name, group.groupId)
+            idDisplayNameMap.set(group.groupId, group.name)
+            idDisplayTypeMap.set(group.groupId, 'g')
+          })
+        }
+      } else if (url.endsWith('api/user')) {
+        if (json?.data && Array.isArray(json.data)) {
+          json.data
+            .filter(user => user.deleted !== true)
+            .forEach(user => {
+              displayNameIdMap.set(user.displayName, user.tbId)
+              idDisplayNameMap.set(user.tbId, user.displayName)
+              idDisplayTypeMap.set(user.tbId, 'u')
+            })
+        }
+      } else if (url.endsWith('api/message/recent')) {
+        if (json?.data && Array.isArray(json.data)) {
+          json.data.forEach(chatBoxMessage => {
+            // receiverType:
+            // 0 -> personal chat
+            // 1 -> group / announcement
+            if (chatBoxMessage.receiverType === 0) {
+              // user, use the state to determine the chat box uid
+              if (chatBoxMessage.state[chatBoxMessage.senderId] === 1) {
+                chatBoxMessageMap.set(`u${chatBoxMessage.receiverId}`, chatBoxMessage)
+              } else {
+                chatBoxMessageMap.set(`u${chatBoxMessage.senderId}`, chatBoxMessage)
+              }
+            } else if (chatBoxMessage.receiverType === 1) {
+              // group, use the state to determine the chat box uid
+              if (chatBoxMessage.state[chatBoxMessage.senderId] === 1) {
+                chatBoxMessageMap.set(`g${chatBoxMessage.receiverId}`, chatBoxMessage)
+              } else if (chatBoxMessage.state[chatBoxMessage.receiverId] === 1) {
+                chatBoxMessageMap.set(`g${chatBoxMessage.senderId}`, chatBoxMessage)
+              } else {
+                chatBoxMessageMap.set(`g${chatBoxMessage.receiverId}`, chatBoxMessage)
+              }
+            }
+          })
+        }
+      } else if (url.endsWith('api/user/me')) {
+        currentUserId = json?.data?.user?.tbId
+      }
+    },
+    { passive: true },
+  )
+}
+
+/**
+ * Emit CustomEvent('onXHRResponse', { url: string, method: string, responseText: string }) when there is XHR
+ */
+function registerXHRInterceptor() {
+  const rawOpen = XMLHttpRequest.prototype.open
+
+  XMLHttpRequest.prototype.open = function (method, url) {
+    this._method = method
+    this._url = url
+    if (!this._hooked) {
+      this._hooked = true
+      setupHook(this)
     }
+    rawOpen.apply(this, arguments)
   }
 
-  // Create an observer instance linked to the callback function
-  const observer = new MutationObserver(callback)
+  function setupHook(xhr) {
+    function getter() {
+      delete xhr.responseText
+      const ret = xhr.responseText
+      setup()
 
-  // Start observing the target node for configured mutations
-  // this observer don't need to disconnect
-  observer.observe(targetNode, config)
+      window.dispatchEvent(
+        new CustomEvent('onXHRResponse', {
+          detail: {
+            url: this._url,
+            method: this._method,
+            responseText: ret,
+          },
+        }),
+      )
+      return ret
+    }
+
+    function setter(str) {}
+
+    function setup() {
+      Object.defineProperty(xhr, 'responseText', {
+        get: getter,
+        set: setter,
+        configurable: true,
+      })
+    }
+    setup()
+  }
 }
+
+registerXHRInterceptor()
+
+registerMutationObserver()
+
+registerDraftHandling()
+
+registerFunctionalButtons()
 
 // handle dark mode
 registerDarkModeHandling()
@@ -404,61 +704,22 @@ registerFontHandling()
 
 // handle isSubpixel
 registerBooleanStyleSheet('isSubpixel', {
-  css: `
-* {
-    -webkit-font-smoothing: subpixel-antialiased;
-}
-  `,
+  css: injectedCss.isSubpixel,
 })
 
 // handle isBorderless
 registerBooleanStyleSheet('isBorderless', {
-  css: `
-* {
-    border: 0 !important;
-}
-
-.ConversationView > .front > .NavigationBar,
-.ConversationView > .front > .NavigationBar + .WelcomeView {
-    background-color: rgb(245, 245, 245);
-}
-
-input[type=text],
-input[type=search],
-input[type=textarea] {
-  background-color: rgb(245, 245, 245);
-}
-  `,
+  css: injectedCss.isBorderless,
 })
 
 // handle isBoldUsername
 registerBooleanStyleSheet('isBoldUsername', {
-  css: `
-.RecentMessageView>.items .item>.content .subject,
-.Avatar > .texts > .displayName,
-.TopBar > .Me > .Avatar .displayName,
-.MessageViewItem.bubble > div.body > div.whoWhatWhen > div.who .displayName {
-    font-weight: bold;
-}
-  `,
+  css: injectedCss.isBoldUsername,
 })
 
 // handle isBubbleDisplayDate
 registerBooleanStyleSheet('isBubbleDisplayDate', {
-  css: `
-.MessageViewItem.bubble > div.head {
-    background: unset;
-    margin-bottom: 8px;
-}
-
-.MessageViewItem.bubble > div.head > .displayDate {
-    background-color: rgb(230, 234, 238);
-    padding: 4px 16px;
-    border-radius: 20px;
-    font-weight: 700;
-    color: black;
-}
-  `,
+  css: injectedCss.isBubbleDisplayDate,
 })
 
 // handle docking badge

@@ -7,8 +7,7 @@ const config = {
   plugins: [
     new CopyPlugin({
       patterns: [
-        { from: 'src/main/inject/inject.js', to: 'inject' },
-        { from: 'src/main/inject/dark-mode-fixes.css', to: 'inject' },
+        { from: 'src/main/inject', to: 'inject' },
         { from: 'src/main/preload.js', to: '' },
       ],
     }),
