@@ -175,9 +175,6 @@ function registerBadgeHandling() {
 
   let lastTitle = ''
 
-  // initial update the badge
-  setTimeout(() => updateBadge(), 1000)
-
   function updateBadge() {
     const title = window.document.title
 
@@ -201,6 +198,16 @@ function registerBadgeHandling() {
   }
 
   window.Notification = NotificationWrapper
+
+  new MutationObserver(function () {
+    // any changes to title will update the badge
+    updateBadge()
+  }).observe(document.querySelector('title'), {
+    attributes: true,
+    childList: true,
+    characterData: true,
+    subtree: true,
+  })
 }
 
 function registerResetRecommendedSettings() {
