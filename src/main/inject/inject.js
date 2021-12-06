@@ -438,10 +438,9 @@ function registerEmojiHandling() {
       const el = document.getElementsByClassName('Editable')[0]
       el?.focus()
 
-      // simulate an input event
-      el?.dispatchEvent(new Event('input'))
       requestAnimationFrame(() => {
         pasteHtmlAtCaret(emoji.native)
+        el?.dispatchEvent(new Event('input'))
       })
     },
   })
