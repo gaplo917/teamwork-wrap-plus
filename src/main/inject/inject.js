@@ -674,6 +674,8 @@ function registerDraftHandling() {
         }
       } else if (url.endsWith('api/user/me')) {
         currentUserId = json?.data?.user?.tbId
+      } else if (url.endsWith('api/message/sendMsg')) {
+        document.getElementsByClassName('Editable')[0]?.dispatchEvent(new Event('input'))
       }
     },
     { passive: true },
