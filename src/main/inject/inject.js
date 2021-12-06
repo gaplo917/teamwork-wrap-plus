@@ -736,6 +736,33 @@ function registerXHRInterceptor() {
   }
 }
 
+function registerAutoScroll() {
+  window.addEventListener(
+    'onRootMutate',
+    ({ detail: mutationsList }) => {
+      for (let mutation of mutationsList) {
+        if (
+          mutation.type === 'childList' &&
+          mutation.addedNodes.length === 0 &&
+          mutation.target &&
+          mutation.target.className === 'ChatView'
+        ) {
+          const scrollView = document.querySelector('.scrollView')
+          scrollView.style['overflow-anchor'] = 'auto'
+          scrollView.style['overflow'] = 'scroll'
+
+          scrollView.addEventListener('scroll', e => {
+            if (e.target.scrollTop < 100) {
+              e.target.querySelector('.previousButton')?.click()
+            }
+          })
+        }
+      }
+    },
+    { passive: true },
+  )
+}
+
 // register XHR intercept the dispatch CustomEvent for post-processing
 registerXHRInterceptor()
 
@@ -785,3 +812,5 @@ registerResetRecommendedSettings()
 
 // handle emoji features
 registerEmojiHandling()
+
+registerAutoScroll()
