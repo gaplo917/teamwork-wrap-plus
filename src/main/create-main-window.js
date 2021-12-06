@@ -8,6 +8,24 @@ import { config } from './config'
 
 const isDevelopment = process.env.NODE_ENV !== 'production'
 
+// brain-less copy https://stackoverflow.com/a/16684530/6763724
+const getDirFilesRecursively = function (dir) {
+  let results = []
+  const list = fs.readdirSync(dir)
+  list.forEach(function (file) {
+    file = dir + '/' + file
+    const stat = fs.statSync(file)
+    if (stat && stat.isDirectory()) {
+      /* Recurse into a subdirectory */
+      results = results.concat(getDirFilesRecursively(file))
+    } else {
+      /* Is a file */
+      results.push(file)
+    }
+  })
+  return results
+}
+
 export async function createMainWindow() {
   const window = new BrowserWindow({
     width: 1024,
@@ -45,13 +63,31 @@ export async function createMainWindow() {
   })
 
   window.webContents.on('dom-ready', async () => {
-    const injectCode = fs.readFileSync(path.join(__dirname + '/inject/inject.js'), 'utf8')
-    const darkModeFixes = fs.readFileSync(path.join(__dirname + '/inject/dark-mode-fixes.css'), 'utf8')
-    // inject the css
-    await window.webContents.executeJavaScript(`const darkModeFixes = \`${darkModeFixes}\`;`)
+    const injectDir = path.join(__dirname + '/inject')
 
-    // `;0` is useful, ref: https://github.com/electron/electron/issues/23722
-    await window.webContents.executeJavaScript(`${injectCode};0`)
+    // create a placeholder
+    await window.webContents.executeJavaScript(`window.injectedCode = { 'SVG': {}, 'CSS': {} };0`)
+
+    getDirFilesRecursively(injectDir)
+      .sort(file => (path.basename(file) === 'inject.js' ? 1 : -1)) // always be the last candidate to run
+      .forEach(file => {
+        const extName = path.extname(file)
+        const filename = path.basename(file)
+        const injectCode = fs.readFileSync(file, 'utf8')
+
+        if (extName === '.css' || extName === '.svg') {
+          // inject the css/svg into javascript variable
+          window.webContents.executeJavaScript(
+            `window.injectedCode['${extName.substring(1).toUpperCase()}']['${filename.replace(
+              extName,
+              '',
+            )}'] = \`${injectCode}\`;`,
+          )
+        } else if (extName === '.js') {
+          // `;0` is useful, ref: https://github.com/electron/electron/issues/23722
+          window.webContents.executeJavaScript(`${injectCode};0`)
+        }
+      })
   })
 
   window.webContents.on('new-window', openUrlHandler)

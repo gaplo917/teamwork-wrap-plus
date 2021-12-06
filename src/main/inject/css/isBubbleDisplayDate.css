@@ -1,0 +1,12 @@
+.MessageViewItem.bubble > div.head {
+    background: unset;
+    margin-bottom: 8px;
+}
+
+.MessageViewItem.bubble > div.head > .displayDate {
+    background-color: rgb(230, 234, 238);
+    padding: 4px 16px;
+    border-radius: 20px;
+    font-weight: 700;
+    color: black;
+}
