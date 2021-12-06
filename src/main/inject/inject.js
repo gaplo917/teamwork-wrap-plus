@@ -314,7 +314,6 @@ const registerRootNodeMutationObserver = () => {
 }
 
 const registerAutoRefreshWhenTeamworkTimeoutHandling = () => {
-  let dropDownCount = 0
   new MutationObserver(function (mutationsList, observer) {
     for (let mutation of mutationsList) {
       if (
@@ -334,12 +333,13 @@ const registerAutoRefreshWhenTeamworkTimeoutHandling = () => {
         mutation.addedNodes.length === 1 &&
         mutation.addedNodes[0].className === 'dropdown bootstrapMenu'
       ) {
-        if (dropDownCount >= 1) {
-          // toggle the refresh button
-          mutation.addedNodes[0].remove()
-        } else {
-          dropDownCount++
-        }
+        document.querySelectorAll('.dropdown.bootstrapMenu').forEach((el, key, parent) => {
+          if (key > 0 && key < parent.length - 1) {
+            // 0 -> reserve for setting dropdown
+            // parent.length - 1 -> reserve for the chat bubble dropdown
+            el.remove()
+          }
+        })
       }
     }
   }).observe(document.body, { childList: true })
