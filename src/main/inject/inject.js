@@ -27,6 +27,7 @@ const injectedCss = injectedCode['CSS']
  * Injection happens in create-main-window.js
  * @type {{
  * gt: string,
+ * sunny: string,
  * moon: string,
  * roomBooking: string,
  * supportTicket: string,
