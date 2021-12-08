@@ -652,6 +652,20 @@ function registerDraftHandling() {
     }
   }
 
+  const processSentOutMessage = chatBoxMessage => {
+    // receiverType:
+    // 0 -> personal chat
+    // 1 -> group / announcement
+    // because we actively send out, would always use receiverId in the chatbox
+    if (+chatBoxMessage.receiverType === 0) {
+      // user, use the state to determine the chat box uid
+      chatBoxMessageMap.set(`u${chatBoxMessage.receiverId}`, chatBoxMessage)
+    } else if (+chatBoxMessage.receiverType === 1) {
+      // group, use the state to determine the chat box uid
+      chatBoxMessageMap.set(`g${chatBoxMessage.receiverId}`, chatBoxMessage)
+    }
+  }
+
   // get the intercepted response and build up the data we need for draft notes handling
   window.addEventListener(
     'onXHRResponse',
@@ -711,7 +725,7 @@ function registerDraftHandling() {
     )
     if (json?.senderId) {
       json.meta = safeJsonParse(json.meta)
-      processChatBoxMessage(json)
+      processSentOutMessage(json)
     }
   })
 }
