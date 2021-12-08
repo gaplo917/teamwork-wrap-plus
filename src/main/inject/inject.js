@@ -721,7 +721,9 @@ function registerDraftHandling() {
 
   window.addEventListener('onXHRSend', ({ detail }) => {
     const json = safeJsonParse(
-      '{"' + decodeURIComponent(detail).replace(/"/g, '\\"').replace(/&/g, '","').replace(/=/g, '":"') + '"}',
+      '{"' +
+        decodeURIComponent(detail).replace(/"/g, '\\"').replace(/&/g, '","').replace(/=/g, '":"').replace(/\+/g, ' ') +
+        '"}',
     )
     if (json?.senderId) {
       json.meta = safeJsonParse(json.meta)
