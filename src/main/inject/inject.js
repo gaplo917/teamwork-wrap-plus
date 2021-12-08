@@ -560,7 +560,7 @@ function registerDraftHandling() {
 
                   if (value === '') {
                     // the draft is empty, rollback the html
-                    const senderId = chatBoxMessageMap.get(cbKey)?.senderId
+                    const senderId = +chatBoxMessageMap.get(cbKey)?.senderId
                     const displayName = senderId === currentUserId ? 'You' : idDisplayNameMap.get(senderId)
 
                     if (id === senderId && memberEl) {
@@ -629,6 +629,29 @@ function registerDraftHandling() {
     { passive: true },
   )
 
+  const processChatBoxMessage = chatBoxMessage => {
+    // receiverType:
+    // 0 -> personal chat
+    // 1 -> group / announcement
+    if (+chatBoxMessage.receiverType === 0) {
+      // user, use the state to determine the chat box uid
+      if (+chatBoxMessage.state?.[chatBoxMessage.senderId] === 1) {
+        chatBoxMessageMap.set(`u${chatBoxMessage.receiverId}`, chatBoxMessage)
+      } else {
+        chatBoxMessageMap.set(`u${chatBoxMessage.senderId}`, chatBoxMessage)
+      }
+    } else if (+chatBoxMessage.receiverType === 1) {
+      // group, use the state to determine the chat box uid
+      if (+chatBoxMessage.state?.[chatBoxMessage.senderId] === 1) {
+        chatBoxMessageMap.set(`g${chatBoxMessage.receiverId}`, chatBoxMessage)
+      } else if (+chatBoxMessage.state?.[chatBoxMessage.receiverId] === 1) {
+        chatBoxMessageMap.set(`g${chatBoxMessage.senderId}`, chatBoxMessage)
+      } else {
+        chatBoxMessageMap.set(`g${chatBoxMessage.receiverId}`, chatBoxMessage)
+      }
+    }
+  }
+
   // get the intercepted response and build up the data we need for draft notes handling
   window.addEventListener(
     'onXHRResponse',
@@ -656,28 +679,7 @@ function registerDraftHandling() {
         }
       } else if (url.endsWith('api/message/recent')) {
         if (json?.data && Array.isArray(json.data)) {
-          json.data.forEach(chatBoxMessage => {
-            // receiverType:
-            // 0 -> personal chat
-            // 1 -> group / announcement
-            if (chatBoxMessage.receiverType === 0) {
-              // user, use the state to determine the chat box uid
-              if (chatBoxMessage.state[chatBoxMessage.senderId] === 1) {
-                chatBoxMessageMap.set(`u${chatBoxMessage.receiverId}`, chatBoxMessage)
-              } else {
-                chatBoxMessageMap.set(`u${chatBoxMessage.senderId}`, chatBoxMessage)
-              }
-            } else if (chatBoxMessage.receiverType === 1) {
-              // group, use the state to determine the chat box uid
-              if (chatBoxMessage.state[chatBoxMessage.senderId] === 1) {
-                chatBoxMessageMap.set(`g${chatBoxMessage.receiverId}`, chatBoxMessage)
-              } else if (chatBoxMessage.state[chatBoxMessage.receiverId] === 1) {
-                chatBoxMessageMap.set(`g${chatBoxMessage.senderId}`, chatBoxMessage)
-              } else {
-                chatBoxMessageMap.set(`g${chatBoxMessage.receiverId}`, chatBoxMessage)
-              }
-            }
-          })
+          json.data.forEach(processChatBoxMessage)
         }
       } else if (url.endsWith('api/user/me')) {
         currentUserId = json?.data?.user?.tbId
@@ -687,13 +689,40 @@ function registerDraftHandling() {
     },
     { passive: true },
   )
+
+  const safeJsonParse = data => {
+    try {
+      return JSON.parse(data)
+    } catch (e) {
+      return null
+    }
+  }
+
+  window.addEventListener('onWebSocketReceive', ({ detail }) => {
+    const json = safeJsonParse(detail.data)
+    if (json?.senderId) {
+      processChatBoxMessage(json)
+    }
+  })
+
+  window.addEventListener('onXHRSend', ({ detail }) => {
+    const json = safeJsonParse(
+      '{"' + decodeURIComponent(detail).replace(/"/g, '\\"').replace(/&/g, '","').replace(/=/g, '":"') + '"}',
+    )
+    if (json?.senderId) {
+      json.meta = safeJsonParse(json.meta)
+      processChatBoxMessage(json)
+    }
+  })
 }
 
 /**
- * Emit CustomEvent('onXHRResponse', { url: string, method: string, responseText: string }) when there is XHR
+ * Emit CustomEvent('onXHRResponse', { detail: { url: string, method: string, responseText: string } }) when there is XHR
+ * Emit CustomEvent('onXHRSend', { detail: string }) when there is XHR
  */
 function registerXHRInterceptor() {
   const rawOpen = XMLHttpRequest.prototype.open
+  const rawSend = XMLHttpRequest.prototype.send
 
   XMLHttpRequest.prototype.open = function (method, url) {
     this._method = method
@@ -703,6 +732,14 @@ function registerXHRInterceptor() {
       setupHook(this)
     }
     rawOpen.apply(this, arguments)
+  }
+  XMLHttpRequest.prototype.send = function (data) {
+    window.dispatchEvent(
+      new CustomEvent('onXHRSend', {
+        detail: data,
+      }),
+    )
+    rawSend.apply(this, arguments)
   }
 
   function setupHook(xhr) {
@@ -736,6 +773,69 @@ function registerXHRInterceptor() {
   }
 }
 
+function registerWebSocketInterceptor() {
+  window.WebSocket = new Proxy(window.WebSocket, {
+    construct(target, args) {
+      console.log('Proxying WebSocket connection', ...args)
+      const ws = new target(...args)
+
+      // Configurable hooks
+      ws.hooks = {
+        beforeSend: () => null,
+        beforeReceive: () => null,
+      }
+
+      // Intercept send
+      ws.send = new Proxy(ws.send, {
+        apply(target, thisArg, args) {
+          if (ws.hooks.beforeSend(args) === false) {
+            return
+          }
+          return target.apply(thisArg, args)
+        },
+      })
+
+      // Intercept events
+      ws.addEventListener = new Proxy(ws.addEventListener, {
+        apply(target, thisArg, args) {
+          if (args[0] === 'message' && ws.hooks.beforeReceive(args) === false) {
+            return
+          }
+          return target.apply(thisArg, args)
+        },
+      })
+
+      Object.defineProperty(ws, 'onmessage', {
+        set(func) {
+          const onmessage = function onMessageProxy(event) {
+            if (ws.hooks.beforeReceive(event) === false) {
+              return
+            }
+            func.call(this, event)
+          }
+          return ws.addEventListener.apply(this, ['message', onmessage, false])
+        },
+      })
+
+      // Save reference
+      window._websockets = window._websockets || []
+      window._websockets.push(ws)
+      window.dispatchEvent(new Event('onWebsocketCreated'))
+
+      return ws
+    },
+  })
+
+  window.addEventListener('onWebsocketCreated', () => {
+    window._websockets[0].hooks = {
+      // Just log the outgoing request
+      beforeSend: data => window.dispatchEvent(new CustomEvent('onWebSocketSend', { detail: data })),
+      // Return false to prevent the on message callback from being invoked
+      beforeReceive: data => window.dispatchEvent(new CustomEvent('onWebSocketReceive', { detail: data })),
+    }
+  })
+}
+
 function registerAutoScroll() {
   window.addEventListener(
     'onRootMutate',
@@ -765,6 +865,8 @@ function registerAutoScroll() {
 
 // register XHR intercept the dispatch CustomEvent for post-processing
 registerXHRInterceptor()
+
+registerWebSocketInterceptor()
 
 // register DOM change listener
 registerRootNodeMutationObserver()
