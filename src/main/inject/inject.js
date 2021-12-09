@@ -522,6 +522,7 @@ function registerDraftHandling() {
   const idDisplayTypeMap = new Map()
   const chatBoxMessageMap = new Map()
   let currentUserId = null
+  let currentChatBoxId = null
   const uid = () => displayNameIdMap.get(document.querySelector('#root .NavigationBar .Avatar .displayName').innerHTML)
   const chatBoxKey = id => `${idDisplayTypeMap.get(id)}${id}`
   const updateChatBoxDebounce = createDebounce()
@@ -539,61 +540,73 @@ function registerDraftHandling() {
           mutation.nextSibling.className === 'InputBox'
         ) {
           const editArea = mutation.target.querySelector('.Editable')
-          const debounce = createDebounce()
           const id = uid()
           const cbKey = chatBoxKey(id)
+          if (currentChatBoxId === cbKey) {
+            // early return when we are in the same ui
+            // to trigger this behaviour, selecting a member name from @xxx
+            editArea?.dispatchEvent(new Event('input'))
+          } else {
+            currentChatBoxId = cbKey
 
-          if (editArea) {
-            // register to write draft the localStorage
-            editArea.addEventListener(
-              'input',
-              event => {
-                // event handling code for sane browsers
-                const value = event.target.innerHTML
+            const debounce = createDebounce()
 
-                debounce(() => {
-                  window.localStorage.setItem(cbKey, value)
+            if (editArea) {
+              // register to write draft the localStorage
+              editArea.addEventListener(
+                'input',
+                event => {
+                  // event handling code for sane browsers
+                  const value = event.target.innerHTML
 
-                  const chatBox = document.querySelector(`.item[data-conversation-id="${cbKey}"]`)
-                  const memberEl = chatBox?.querySelector('.who > .member')
-                  const textEl = chatBox?.querySelector('.what > .text, .what > .nonText')
+                  debounce(() => {
+                    window.localStorage.setItem(cbKey, value)
 
-                  if (value === '') {
-                    // the draft is empty, rollback the html
-                    const senderId = +chatBoxMessageMap.get(cbKey)?.senderId
-                    const displayName = senderId === currentUserId ? 'You' : idDisplayNameMap.get(senderId)
+                    const chatBox = document.querySelector(`.item[data-conversation-id="${cbKey}"]`)
+                    const memberEl = chatBox?.querySelector('.who > .member')
+                    const textEl = chatBox?.querySelector('.what > .text, .what > .nonText')
 
-                    if (id === senderId && memberEl) {
-                      // remove if there is a redundant element
-                      memberEl.remove()
-                    } else if (memberEl) {
-                      memberEl.innerHTML = `${displayName}:`
-                    }
+                    if (value === '') {
+                      // the draft is empty, rollback the html
+                      const senderId = +chatBoxMessageMap.get(cbKey)?.senderId
+                      const displayName = senderId === currentUserId ? 'You' : idDisplayNameMap.get(senderId)
 
-                    if (textEl) {
-                      const messageMeta = chatBoxMessageMap.get(cbKey)?.meta
-                      // TODO: identify the meta data type for image, video, voice, etc.
-                      textEl.innerHTML = messageMeta?.content ?? `[sent ${messageMeta?.file?.length} file(s)]`
-                    }
-                  } else {
-                    if (memberEl) {
-                      memberEl.innerHTML = '✏️ You:'
+                      if (id === senderId && memberEl) {
+                        // remove if there is a redundant element
+                        memberEl.remove()
+                      } else if (memberEl) {
+                        memberEl.innerHTML = `${displayName}:`
+                      }
+
+                      if (textEl) {
+                        const messageMeta = chatBoxMessageMap.get(cbKey)?.meta
+                        // TODO: identify the meta data type for image, video, voice, etc.
+                        textEl.innerHTML = messageMeta?.content ?? `[sent ${messageMeta?.file?.length} file(s)]`
+                      }
                     } else {
-                      chatBox
-                        ?.querySelector('.subject')
-                        ?.insertAdjacentHTML('afterend', `<div class="who"><span class="member">✏️ You:</span></div>`)
+                      if (memberEl) {
+                        memberEl.innerHTML = '✏️ You:'
+                      } else {
+                        chatBox
+                          ?.querySelector('.subject')
+                          ?.insertAdjacentHTML('afterend', `<div class="who"><span class="member">✏️ You:</span></div>`)
+                      }
+                      if (textEl) {
+                        textEl.innerHTML = value
+                      }
                     }
-                    if (textEl) {
-                      textEl.innerHTML = value
-                    }
-                  }
-                }, 150)
-              },
-              { passive: true },
-            )
+                  }, 50)
+                },
+                { passive: true },
+              )
 
-            // restore the draft
-            editArea.innerHTML = window.localStorage.getItem(cbKey) || ''
+              const restoredDraft = window.localStorage.getItem(cbKey)
+
+              if (restoredDraft && editArea.innerHTML !== restoredDraft) {
+                // restore the draft
+                editArea.innerHTML = restoredDraft
+              }
+            }
           }
         }
         if (
