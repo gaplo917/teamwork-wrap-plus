@@ -327,20 +327,6 @@ const registerAutoRefreshWhenTeamworkTimeoutHandling = () => {
           refreshButton?.click()
         }
       }
-
-      if (
-        mutation.type === 'childList' &&
-        mutation.addedNodes.length === 1 &&
-        mutation.addedNodes[0].className === 'dropdown bootstrapMenu'
-      ) {
-        document.querySelectorAll('.dropdown.bootstrapMenu').forEach((el, key, parent) => {
-          if (key > 0 && key < parent.length - 1) {
-            // 0 -> reserve for setting dropdown
-            // parent.length - 1 -> reserve for the chat bubble dropdown
-            el.remove()
-          }
-        })
-      }
     }
   }).observe(document.body, { childList: true })
 }
