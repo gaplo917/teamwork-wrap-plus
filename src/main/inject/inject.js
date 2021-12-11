@@ -567,21 +567,24 @@ function registerDraftHandling() {
                       if (textEl) {
                         const messageMeta = chatBoxMessageMap.get(cbKey)?.meta
                         // TODO: identify the meta data type for image, video, voice, etc.
-                        textEl.innerHTML = messageMeta?.content ?? `[sent ${messageMeta?.file?.length} file(s)]`
+                        textEl.innerHTML = messageMeta?.content ?? `[sent ${messageMeta?.file?.length || 0} file(s)]`
                       }
                     } else {
                       if (memberEl) {
-                        memberEl.innerHTML = '✏️ You:'
+                        memberEl.innerHTML = '<span style="color: darkred">Draft:</span>'
                       } else {
                         chatBox
                           ?.querySelector('.subject')
-                          ?.insertAdjacentHTML('afterend', `<div class="who"><span class="member">✏️ You:</span></div>`)
+                          ?.insertAdjacentHTML(
+                            'afterend',
+                            `<div class="who"><span class="member"><span style="color: darkred">Draft:</span></span></div>`,
+                          )
                       }
                       if (textEl) {
                         textEl.innerHTML = value
                       }
                     }
-                  }, 50)
+                  }, 300)
                 },
                 { passive: true },
               )
@@ -614,7 +617,7 @@ function registerDraftHandling() {
                 const memberEl = chatBox?.querySelector('.who > .member')
                 const textEl = chatBox?.querySelector('.what > .text, .what > .nonText')
                 if (memberEl) {
-                  memberEl.innerHTML = '✏️ You:'
+                  memberEl.innerHTML = '<span style="color: darkred">Draft:</span>'
                 }
                 if (textEl) {
                   textEl.innerHTML = savedDraft
@@ -704,9 +707,14 @@ function registerDraftHandling() {
   )
 
   const safeJsonParse = data => {
-    try {
-      return JSON.parse(data)
-    } catch (e) {
+    if (data && (data === '' || data[0] === '{' || data[0] === '[')) {
+      try {
+        return JSON.parse(data)
+      } catch (e) {
+        console.warn(e, data)
+        return null
+      }
+    } else {
       return null
     }
   }
@@ -719,13 +727,16 @@ function registerDraftHandling() {
   })
 
   window.addEventListener('onXHRSend', ({ detail }) => {
-    const json = safeJsonParse(
-      '{"' +
-        decodeURIComponent(detail).replace(/"/g, '\\"').replace(/&/g, '","').replace(/=/g, '":"').replace(/\+/g, ' ') +
-        '"}',
-    )
+    const json = detail
+      .split('&')
+      .map(it => it.split('='))
+      .reduce((acc, [key, value]) => {
+        acc[key] = decodeURIComponent(value)
+        return acc
+      }, {})
     if (json?.senderId) {
       json.meta = safeJsonParse(json.meta)
+      json.meta.content = json.meta?.content?.replace(/\+/g, ' ')
       processSentOutMessage(json)
     }
   })
@@ -864,10 +875,10 @@ function registerAutoScroll() {
         ) {
           const scrollView = document.querySelector('.scrollView')
           scrollView.style['overflow-anchor'] = 'auto'
-          scrollView.style['overflow'] = 'scroll'
+          scrollView.style['overflow-y'] = 'scroll'
 
           scrollView.addEventListener('scroll', e => {
-            if (e.target.scrollTop < 100) {
+            if (e.target.scrollTop < 150) {
               e.target.querySelector('.previousButton')?.click()
             }
           })
