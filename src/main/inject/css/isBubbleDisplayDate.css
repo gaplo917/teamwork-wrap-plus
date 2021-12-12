@@ -10,3 +10,7 @@
     font-weight: 700;
     color: black;
 }
+
+.MessageBubble > div.content {
+    max-width: 480px;
+}
