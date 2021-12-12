@@ -526,7 +526,7 @@ function registerDraftHandling() {
           mutation.nextSibling.className === 'InputBox'
         ) {
           const editArea = mutation.target.querySelector('.Editable')
-          const id = uid()
+          const id = +uid()
           const cbKey = chatBoxKey(id)
           if (currentChatBoxId === cbKey) {
             // early return when we are in the same ui
@@ -552,7 +552,7 @@ function registerDraftHandling() {
                     const memberEl = chatBox?.querySelector('.who > .member')
                     const textEl = chatBox?.querySelector('.what > .text, .what > .nonText')
 
-                    if (value === '') {
+                    if (!value || value === '') {
                       // the draft is empty, rollback the html
                       const senderId = +chatBoxMessageMap.get(cbKey)?.senderId
                       const displayName = senderId === currentUserId ? 'You' : idDisplayNameMap.get(senderId)
@@ -570,6 +570,7 @@ function registerDraftHandling() {
                         textEl.innerHTML = messageMeta?.content ?? `[sent ${messageMeta?.file?.length || 0} file(s)]`
                       }
                     } else {
+                      // has draft
                       if (memberEl) {
                         memberEl.innerHTML = '<span style="color: darkred">Draft:</span>'
                       } else {
@@ -584,9 +585,9 @@ function registerDraftHandling() {
                         textEl.innerHTML = value
                       }
                     }
-                  }, 300)
+                  }, 500)
                 },
-                { passive: true },
+                { passive: false },
               )
 
               const restoredDraft = window.localStorage.getItem(cbKey)
