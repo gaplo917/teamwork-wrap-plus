@@ -103,9 +103,11 @@ function createDebounce() {
   let scheduledToken = null
   return (fn, ms) => {
     clearTimeout(scheduledToken)
-    scheduledToken = setTimeout(() => {
-      fn()
-    }, ms)
+    if (fn && ms) {
+      scheduledToken = setTimeout(() => {
+        fn()
+      }, ms)
+    }
   }
 }
 
@@ -509,9 +511,72 @@ function registerDraftHandling() {
   const chatBoxMessageMap = new Map()
   let currentUserId = null
   let currentChatBoxId = null
+  let currentUpdateEditAreaDraftDebounce = null
   const uid = () => displayNameIdMap.get(document.querySelector('#root .NavigationBar .Avatar .displayName').innerHTML)
   const chatBoxKey = id => `${idDisplayTypeMap.get(id)}${id}`
   const updateChatBoxDebounce = createDebounce()
+
+  function updateChatBoxDOM({ chatBox, draft, inputMode }) {
+    const draftEl = chatBox?.querySelector('.who > .draft')
+    const draftTextEl = chatBox?.querySelector('.what > .draft')
+    const textEl = chatBox?.querySelector('.what > .text, .what > .nonText')
+    const memberEl = chatBox?.querySelector('.who > .member')
+
+    if (draft === '' || draft === undefined || draft === null) {
+      if (!inputMode) {
+        // not input mode, don't need to modify the DOM, i.e. scrolling on the chatbox list
+        return
+      }
+
+      // the draft is empty, rollback the html
+      if (draftEl) {
+        // remove if there is a redundant element
+        draftEl.parentElement.remove()
+      }
+
+      if (draftTextEl) {
+        draftTextEl.parentElement.remove()
+      }
+
+      if (memberEl) {
+        // set the member element back to visible
+        memberEl.style.display = 'initial'
+      }
+
+      if (textEl) {
+        textEl.style.display = 'initial'
+      }
+    } else {
+      // has draft
+      // set the member element to none first
+      if (memberEl) {
+        memberEl.style.display = 'none'
+      }
+
+      if (textEl) {
+        textEl.style.display = 'none'
+      }
+
+      if (draftTextEl) {
+        draftTextEl.innerHTML = draft
+      } else {
+        chatBox
+          ?.querySelector('.subject')
+          ?.insertAdjacentHTML('afterend', `<div class="what"><span class="draft"><span>${draft}</span></span></div>`)
+      }
+
+      if (draftEl) {
+        draftEl.innerHTML = '<span style="color: darkred">Draft:</span>'
+      } else {
+        chatBox
+          ?.querySelector('.subject')
+          ?.insertAdjacentHTML(
+            'afterend',
+            `<div class="who"><span class="draft"><span style="color: darkred">Draft:</span></span></div>`,
+          )
+      }
+    }
+  }
 
   window.addEventListener(
     'onRootMutate',
@@ -535,7 +600,10 @@ function registerDraftHandling() {
           } else {
             currentChatBoxId = cbKey
 
-            const debounce = createDebounce()
+            // clean up previous debounce
+            currentUpdateEditAreaDraftDebounce?.()
+
+            currentUpdateEditAreaDraftDebounce = createDebounce()
 
             if (editArea) {
               // register to write draft the localStorage
@@ -545,49 +613,15 @@ function registerDraftHandling() {
                   // event handling code for sane browsers
                   const value = event.target.innerHTML
 
-                  debounce(() => {
+                  currentUpdateEditAreaDraftDebounce(() => {
                     window.localStorage.setItem(cbKey, value)
 
                     const chatBox = document.querySelector(`.item[data-conversation-id="${cbKey}"]`)
-                    const memberEl = chatBox?.querySelector('.who > .member')
-                    const textEl = chatBox?.querySelector('.what > .text, .what > .nonText')
 
-                    if (!value || value === '') {
-                      // the draft is empty, rollback the html
-                      const senderId = +chatBoxMessageMap.get(cbKey)?.senderId
-                      const displayName = senderId === currentUserId ? 'You' : idDisplayNameMap.get(senderId)
-
-                      if (id === senderId && memberEl) {
-                        // remove if there is a redundant element
-                        memberEl.remove()
-                      } else if (memberEl) {
-                        memberEl.innerHTML = `${displayName}:`
-                      }
-
-                      if (textEl) {
-                        const messageMeta = chatBoxMessageMap.get(cbKey)?.meta
-                        // TODO: identify the meta data type for image, video, voice, etc.
-                        textEl.innerHTML = messageMeta?.content ?? `[sent ${messageMeta?.file?.length || 0} file(s)]`
-                      }
-                    } else {
-                      // has draft
-                      if (memberEl) {
-                        memberEl.innerHTML = '<span style="color: darkred">Draft:</span>'
-                      } else {
-                        chatBox
-                          ?.querySelector('.subject')
-                          ?.insertAdjacentHTML(
-                            'afterend',
-                            `<div class="who"><span class="member"><span style="color: darkred">Draft:</span></span></div>`,
-                          )
-                      }
-                      if (textEl) {
-                        textEl.innerHTML = value
-                      }
-                    }
-                  }, 500)
+                    updateChatBoxDOM({ chatBox, draft: value, inputMode: true })
+                  }, 100)
                 },
-                { passive: false },
+                { passive: true },
               )
 
               const restoredDraft = window.localStorage.getItem(cbKey)
@@ -606,23 +640,16 @@ function registerDraftHandling() {
           // handle virtual list scrolling will flush the html without draft
           updateChatBoxDebounce(() => {
             document.querySelectorAll('.ReactVirtualized__List .item').forEach((chatBox, index, parent) => {
+              const cbKey = parent[index].getAttribute('data-conversation-id')
+              const savedDraft = window.localStorage.getItem(cbKey)
+              if (savedDraft === null || savedDraft === undefined || savedDraft === '') {
+                // no draft do nothing
+                return
+              }
+
               // just schedule the UI change for next frame to keep the application smooth
               requestAnimationFrame(() => {
-                const cbKey = parent[index].getAttribute('data-conversation-id')
-                const savedDraft = window.localStorage.getItem(cbKey)
-
-                if (!savedDraft || savedDraft === '') {
-                  return
-                }
-
-                const memberEl = chatBox?.querySelector('.who > .member')
-                const textEl = chatBox?.querySelector('.what > .text, .what > .nonText')
-                if (memberEl) {
-                  memberEl.innerHTML = '<span style="color: darkred">Draft:</span>'
-                }
-                if (textEl) {
-                  textEl.innerHTML = savedDraft
-                }
+                updateChatBoxDOM({ chatBox, draft: savedDraft, inputMode: false })
               })
             })
           }, 16)
@@ -672,21 +699,21 @@ function registerDraftHandling() {
   // get the intercepted response and build up the data we need for draft notes handling
   window.addEventListener(
     'onXHRResponse',
-    ({ detail: { method, url, responseText } }) => {
+    ({ detail: { method, url, responseText, data } }) => {
       if (!responseText) return
-      const json = JSON.parse(responseText)
+      const responseJson = JSON.parse(responseText)
 
       if (url.endsWith('api/group')) {
-        if (json?.data && Array.isArray(json.data)) {
-          json.data.forEach(group => {
+        if (responseJson?.data && Array.isArray(responseJson.data)) {
+          responseJson.data.forEach(group => {
             displayNameIdMap.set(group.name, group.groupId)
             idDisplayNameMap.set(group.groupId, group.name)
             idDisplayTypeMap.set(group.groupId, 'g')
           })
         }
       } else if (url.endsWith('api/user')) {
-        if (json?.data && Array.isArray(json.data)) {
-          json.data
+        if (responseJson?.data && Array.isArray(responseJson.data)) {
+          responseJson.data
             .filter(user => user.deleted !== true)
             .forEach(user => {
               displayNameIdMap.set(user.displayName, user.tbId)
@@ -695,13 +722,28 @@ function registerDraftHandling() {
             })
         }
       } else if (url.endsWith('api/message/recent')) {
-        if (json?.data && Array.isArray(json.data)) {
-          json.data.forEach(processChatBoxMessage)
+        if (responseJson?.data && Array.isArray(responseJson.data)) {
+          responseJson.data.forEach(processChatBoxMessage)
         }
       } else if (url.endsWith('api/user/me')) {
-        currentUserId = json?.data?.user?.tbId
+        currentUserId = responseJson?.data?.user?.tbId
       } else if (url.endsWith('api/message/sendMsg')) {
-        document.getElementsByClassName('Editable')[0]?.dispatchEvent(new Event('input'))
+        const requestJson = data
+          .split('&')
+          .map(it => it.split('='))
+          .reduce((acc, [key, value]) => {
+            acc[key] = decodeURIComponent(value)
+            return acc
+          }, {})
+        if (requestJson?.senderId) {
+          requestJson.meta = safeJsonParse(requestJson.meta)
+          if (requestJson.meta !== null) {
+            requestJson.meta.content = requestJson.meta.content?.replace(/\+/g, ' ')
+          } else {
+            requestJson.meta = { content: '...' }
+          }
+          processSentOutMessage(requestJson)
+        }
       }
     },
     { passive: true },
@@ -726,21 +768,6 @@ function registerDraftHandling() {
       processChatBoxMessage(json)
     }
   })
-
-  window.addEventListener('onXHRSend', ({ detail }) => {
-    const json = detail
-      .split('&')
-      .map(it => it.split('='))
-      .reduce((acc, [key, value]) => {
-        acc[key] = decodeURIComponent(value)
-        return acc
-      }, {})
-    if (json?.senderId) {
-      json.meta = safeJsonParse(json.meta)
-      json.meta.content = json.meta?.content?.replace(/\+/g, ' ')
-      processSentOutMessage(json)
-    }
-  })
 }
 
 /**
@@ -761,9 +788,10 @@ function registerXHRInterceptor() {
     rawOpen.apply(this, arguments)
   }
   XMLHttpRequest.prototype.send = function (data) {
+    this._data = data
     window.dispatchEvent(
       new CustomEvent('onXHRSend', {
-        detail: data,
+        detail: { data, url: this.url },
       }),
     )
     rawSend.apply(this, arguments)
@@ -780,6 +808,7 @@ function registerXHRInterceptor() {
           detail: {
             url: this._url,
             method: this._method,
+            data: this._data,
             responseText: ret,
           },
         }),
