@@ -506,10 +506,7 @@ function registerEmojiHandling() {
  */
 function registerDraftHandling() {
   const displayNameIdMap = new Map()
-  const idDisplayNameMap = new Map()
   const idDisplayTypeMap = new Map()
-  const chatBoxMessageMap = new Map()
-  let currentUserId = null
   let currentChatBoxId = null
   let currentUpdateEditAreaDraftDebounce = null
   const uid = () => displayNameIdMap.get(document.querySelector('#root .NavigationBar .Avatar .displayName').innerHTML)
@@ -659,43 +656,6 @@ function registerDraftHandling() {
     { passive: true },
   )
 
-  const processChatBoxMessage = chatBoxMessage => {
-    // receiverType:
-    // 0 -> personal chat
-    // 1 -> group / announcement
-    if (+chatBoxMessage.receiverType === 0) {
-      // user, use the state to determine the chat box uid
-      if (+chatBoxMessage.state?.[chatBoxMessage.senderId] === 1) {
-        chatBoxMessageMap.set(`u${chatBoxMessage.receiverId}`, chatBoxMessage)
-      } else {
-        chatBoxMessageMap.set(`u${chatBoxMessage.senderId}`, chatBoxMessage)
-      }
-    } else if (+chatBoxMessage.receiverType === 1) {
-      // group, use the state to determine the chat box uid
-      if (+chatBoxMessage.state?.[chatBoxMessage.senderId] === 1) {
-        chatBoxMessageMap.set(`g${chatBoxMessage.receiverId}`, chatBoxMessage)
-      } else if (+chatBoxMessage.state?.[chatBoxMessage.receiverId] === 1) {
-        chatBoxMessageMap.set(`g${chatBoxMessage.senderId}`, chatBoxMessage)
-      } else {
-        chatBoxMessageMap.set(`g${chatBoxMessage.receiverId}`, chatBoxMessage)
-      }
-    }
-  }
-
-  const processSentOutMessage = chatBoxMessage => {
-    // receiverType:
-    // 0 -> personal chat
-    // 1 -> group / announcement
-    // because we actively send out, would always use receiverId in the chatbox
-    if (+chatBoxMessage.receiverType === 0) {
-      // user, use the state to determine the chat box uid
-      chatBoxMessageMap.set(`u${chatBoxMessage.receiverId}`, chatBoxMessage)
-    } else if (+chatBoxMessage.receiverType === 1) {
-      // group, use the state to determine the chat box uid
-      chatBoxMessageMap.set(`g${chatBoxMessage.receiverId}`, chatBoxMessage)
-    }
-  }
-
   // get the intercepted response and build up the data we need for draft notes handling
   window.addEventListener(
     'onXHRResponse',
@@ -707,7 +667,6 @@ function registerDraftHandling() {
         if (responseJson?.data && Array.isArray(responseJson.data)) {
           responseJson.data.forEach(group => {
             displayNameIdMap.set(group.name, group.groupId)
-            idDisplayNameMap.set(group.groupId, group.name)
             idDisplayTypeMap.set(group.groupId, 'g')
           })
         }
@@ -717,57 +676,13 @@ function registerDraftHandling() {
             .filter(user => user.deleted !== true)
             .forEach(user => {
               displayNameIdMap.set(user.displayName, user.tbId)
-              idDisplayNameMap.set(user.tbId, user.displayName)
               idDisplayTypeMap.set(user.tbId, 'u')
             })
-        }
-      } else if (url.endsWith('api/message/recent')) {
-        if (responseJson?.data && Array.isArray(responseJson.data)) {
-          responseJson.data.forEach(processChatBoxMessage)
-        }
-      } else if (url.endsWith('api/user/me')) {
-        currentUserId = responseJson?.data?.user?.tbId
-      } else if (url.endsWith('api/message/sendMsg')) {
-        const requestJson = data
-          .split('&')
-          .map(it => it.split('='))
-          .reduce((acc, [key, value]) => {
-            acc[key] = decodeURIComponent(value)
-            return acc
-          }, {})
-        if (requestJson?.senderId) {
-          requestJson.meta = safeJsonParse(requestJson.meta)
-          if (requestJson.meta !== null) {
-            requestJson.meta.content = requestJson.meta.content?.replace(/\+/g, ' ')
-          } else {
-            requestJson.meta = { content: '...' }
-          }
-          processSentOutMessage(requestJson)
         }
       }
     },
     { passive: true },
   )
-
-  const safeJsonParse = data => {
-    if (data && (data === '' || data[0] === '{' || data[0] === '[')) {
-      try {
-        return JSON.parse(data)
-      } catch (e) {
-        console.warn(e, data)
-        return null
-      }
-    } else {
-      return null
-    }
-  }
-
-  window.addEventListener('onWebSocketReceive', ({ detail }) => {
-    const json = safeJsonParse(detail.data)
-    if (json?.senderId) {
-      processChatBoxMessage(json)
-    }
-  })
 }
 
 /**
@@ -922,7 +837,8 @@ function registerAutoScroll() {
 // register XHR intercept the dispatch CustomEvent for post-processing
 registerXHRInterceptor()
 
-registerWebSocketInterceptor()
+//// register websocket interceptor
+// registerWebSocketInterceptor()
 
 // register DOM change listener
 registerRootNodeMutationObserver()
