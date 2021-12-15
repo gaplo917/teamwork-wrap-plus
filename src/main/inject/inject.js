@@ -679,6 +679,8 @@ function registerDraftHandling() {
               idDisplayTypeMap.set(user.tbId, 'u')
             })
         }
+      } else if (url.endsWith('api/message/sendMsg')) {
+        document.getElementsByClassName('Editable')[0]?.dispatchEvent(new Event('input'))
       }
     },
     { passive: true },
