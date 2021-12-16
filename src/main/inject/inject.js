@@ -506,11 +506,13 @@ function registerEmojiHandling() {
  */
 function registerDraftHandling() {
   const displayNameIdMap = new Map()
-  const idDisplayTypeMap = new Map()
   let currentChatBoxId = null
   let currentUpdateEditAreaDraftDebounce = null
-  const uid = () => displayNameIdMap.get(document.querySelector('#root .NavigationBar .Avatar .displayName').innerHTML)
-  const chatBoxKey = id => `${idDisplayTypeMap.get(id)}${id}`
+  const chatBoxKey = () => {
+    const displayName = document.querySelector('#root .NavigationBar .Avatar .displayName').innerHTML
+    const isGroup = document.querySelector('#root .NavigationBar .Avatar .title')?.textContent?.indexOf('people') >= 0
+    return isGroup ? displayNameIdMap.get('g' + displayName) : displayNameIdMap.get('u' + displayName)
+  }
   const updateChatBoxDebounce = createDebounce()
 
   function updateChatBoxDOM({ chatBox, draft, inputMode }) {
@@ -588,8 +590,7 @@ function registerDraftHandling() {
           mutation.nextSibling.className === 'InputBox'
         ) {
           const editArea = mutation.target.querySelector('.Editable')
-          const id = +uid()
-          const cbKey = chatBoxKey(id)
+          const cbKey = chatBoxKey()
           if (currentChatBoxId === cbKey) {
             // early return when we are in the same ui
             // to trigger this behaviour, selecting a member name from @xxx
@@ -666,8 +667,7 @@ function registerDraftHandling() {
       if (url.endsWith('api/group')) {
         if (responseJson?.data && Array.isArray(responseJson.data)) {
           responseJson.data.forEach(group => {
-            displayNameIdMap.set(group.name, group.groupId)
-            idDisplayTypeMap.set(group.groupId, 'g')
+            displayNameIdMap.set('g' + group.name, 'g' + group.groupId)
           })
         }
       } else if (url.endsWith('api/user')) {
@@ -675,8 +675,7 @@ function registerDraftHandling() {
           responseJson.data
             .filter(user => user.deleted !== true)
             .forEach(user => {
-              displayNameIdMap.set(user.displayName, user.tbId)
-              idDisplayTypeMap.set(user.tbId, 'u')
+              displayNameIdMap.set('u' + user.displayName, 'u' + user.tbId)
             })
         }
       } else if (url.endsWith('api/message/sendMsg')) {
