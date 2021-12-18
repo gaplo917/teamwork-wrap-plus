@@ -15,6 +15,8 @@ Also bring in some interesting UI enhancements.
 * [x] JF Open Huninn Font setting
 * [x] Subpixel Antialiased Font Rendering Setting
 * [] Secure Local Lock
+* [x] Draft Note Handling
+* [x] Add useful shortcuts
 
 ### Catch up with Chrome Web Features
 * [x] Open Link to external URL

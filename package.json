@@ -1,7 +1,7 @@
 {
   "name": "teamwork-wrapper",
   "productName": "Teamwork Wrap+",
-  "version": "4.1.2",
+  "version": "5.0.0",
   "license": "MIT",
   "scripts": {
     "dev": "electron-webpack dev",
@@ -17,6 +17,14 @@
       "build/*"
     ],
     "mac": {
+      "category": "productivity",
+      "target": {
+        "target": "dmg",
+        "arch": [
+          "arm64",
+          "x64"
+        ]
+      },
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
       "darkModeSupport": true,
@@ -40,8 +48,8 @@
   },
   "devDependencies": {
     "dotenv": "^8.2.0",
-    "electron": "^9.0.0",
-    "electron-builder": "^22.7.0",
+    "electron": "^16.0.4",
+    "electron-builder": "^22.14.5",
     "electron-notarize": "^0.3.0",
     "electron-webpack": "^2.8.2",
     "prettier": "^2.0.5",

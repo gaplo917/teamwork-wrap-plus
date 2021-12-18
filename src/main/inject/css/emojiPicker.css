@@ -1,0 +1,26 @@
+emoji-picker {
+    position: absolute;
+    z-index: 0;
+    right: 20px;
+    bottom: 70px;
+    border-radius: 8px;
+    box-shadow: 0px 0px 16px -8px rgba(0,0,0,0.75);
+    transition: all 150ms;
+    opacity: 0;
+}
+
+emoji-picker.show {
+    opacity: 1;
+    z-index: 1000;
+}
+
+#emoji-trigger {
+    fill: #bbb;
+    stroke: #bbb;
+}
+
+#emoji-trigger.hovered {
+    fill: #7bb5f9;
+    stroke: #7bb5f9;
+    transition: all 150ms;
+}
