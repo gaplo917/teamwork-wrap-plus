@@ -27,9 +27,11 @@ const injectedCss = injectedCode['CSS']
  * Injection happens in create-main-window.js
  * @type {{
  * gt: string,
+ * sunny: string,
  * moon: string,
  * roomBooking: string,
- * supportTicket: string
+ * supportTicket: string,
+ * emojiTrigger: string
  * }} */
 const injectedSvg = injectedCode['SVG']
 
@@ -101,9 +103,11 @@ function createDebounce() {
   let scheduledToken = null
   return (fn, ms) => {
     clearTimeout(scheduledToken)
-    scheduledToken = setTimeout(() => {
-      fn()
-    }, ms)
+    if (fn && ms) {
+      scheduledToken = setTimeout(() => {
+        fn()
+      }, ms)
+    }
   }
 }
 
@@ -174,9 +178,6 @@ function registerBadgeHandling() {
 
   let lastTitle = ''
 
-  // initial update the badge
-  setTimeout(() => updateBadge(), 1000)
-
   function updateBadge() {
     const title = window.document.title
 
@@ -200,6 +201,16 @@ function registerBadgeHandling() {
   }
 
   window.Notification = NotificationWrapper
+
+  new MutationObserver(function () {
+    // any changes to title will update the badge
+    updateBadge()
+  }).observe(document.querySelector('title'), {
+    attributes: true,
+    childList: true,
+    characterData: true,
+    subtree: true,
+  })
 }
 
 function registerResetRecommendedSettings() {
@@ -282,7 +293,7 @@ const pasteHtmlAtCaret = html => {
 /**
  * Emit CustomEvent('onRootMutate', { detail: MutationRecord[] }) when there is a change in root element
  */
-const registerMutationObserver = () => {
+const registerRootNodeMutationObserver = () => {
   // Select the node that will be observed for mutations
   const targetNode = document.getElementById('root')
 
@@ -304,6 +315,24 @@ const registerMutationObserver = () => {
   observer.observe(targetNode, config)
 }
 
+const registerAutoRefreshWhenTeamworkTimeoutHandling = () => {
+  new MutationObserver(function (mutationsList, observer) {
+    for (let mutation of mutationsList) {
+      if (
+        mutation.type === 'childList' &&
+        mutation.addedNodes.length === 1 &&
+        mutation.addedNodes[0].getAttribute('role') === 'dialog'
+      ) {
+        const refreshButton = mutation.addedNodes[0].querySelector('.btn.btn-primary')
+        if (refreshButton?.innerText?.toLowerCase() === 'refresh') {
+          // auto toggle the refresh button when timeout
+          refreshButton?.click()
+        }
+      }
+    }
+  }).observe(document.body, { childList: true })
+}
+
 function registerFunctionalButtons() {
   window.addEventListener(
     'onRootMutate',
@@ -314,22 +343,22 @@ function registerFunctionalButtons() {
           mutation.removedNodes.length === 1 &&
           mutation.removedNodes[0]?.className === 'SimpleSplashView'
         ) {
-          const adjacentElement = mutation.target?.querySelector('.action.task')
-          const addButton = ({ id, onClick, icon }) => {
+          const addButton = ({ id, onClick, icon, adjacentClass = '.action.task' }) => {
+            const adjacentElement = mutation.target?.querySelector(adjacentClass)
+
             if (adjacentElement && !document.getElementById(id)) {
               adjacentElement.insertAdjacentHTML(
                 'beforebegin',
                 `<div class="action task"><div id="${id}" class="icon" style="fill:#fff">${icon}</div></div>`,
               )
               // require to get it in runtime when the dom tree has changed
-              const el = document.getElementById(id)
-
-              el.addEventListener('click', onClick)
+              document.getElementById(id)?.addEventListener('click', onClick)
             }
           }
 
           addButton({
             id: 'dark-toggle',
+            adjacentClass: '.action.more',
             onClick: evt => {
               if (storage.settings.isDark) {
                 storage.settings.isDark = false
@@ -344,17 +373,13 @@ function registerFunctionalButtons() {
             icon: storage.settings.isDark ? injectedSvg.sunny : injectedSvg.moon,
           })
 
-          // dashboard button
+          // os ticket button
           addButton({
-            id: 'dashboard',
+            id: 'os-ticket',
             onClick: () => {
-              window.open(
-                `${urls.dashboard}/?appKey=${window.options.client.appKey}&appToken=${window.options.client.token}`,
-                null,
-                'width=1440,height=900',
-              )
+              window.open(urls.supportTicket, null, 'width=1440,height=900')
             },
-            icon: injectedSvg.gt,
+            icon: injectedSvg.supportTicket,
           })
 
           // room booking button
@@ -370,13 +395,17 @@ function registerFunctionalButtons() {
             icon: injectedSvg.roomBooking,
           })
 
-          // os ticket button
+          // dashboard button
           addButton({
-            id: 'os-ticket',
+            id: 'dashboard',
             onClick: () => {
-              window.open(urls.supportTicket, null, 'width=1440,height=900')
+              window.open(
+                `${urls.dashboard}/?appKey=${window.options.client.appKey}&appToken=${window.options.client.token}`,
+                null,
+                'width=1440,height=900',
+              )
             },
-            icon: injectedSvg.supportTicket,
+            icon: injectedSvg.gt,
           })
         }
       }
@@ -395,12 +424,11 @@ function registerEmojiHandling() {
     theme: storage.settings.isDark ? 'dark' : 'light',
     onClick: (emoji, event) => {
       const el = document.getElementsByClassName('Editable')[0]
-      el.focus()
+      el?.focus()
 
-      // simulate an input event
-      el.dispatchEvent(new Event('input'))
       requestAnimationFrame(() => {
         pasteHtmlAtCaret(emoji.native)
+        el?.dispatchEvent(new Event('input'))
       })
     },
   })
@@ -417,7 +445,7 @@ function registerEmojiHandling() {
 
   let dismissEmojiPicker = null
   const showEmojiPicker = () => {
-    document.getElementById('emoji-trigger').classList.add('hovered')
+    document.getElementById('emoji-trigger')?.classList.add('hovered')
     if (!picker?.classList.contains('show')) {
       picker?.classList.add('show')
     }
@@ -431,7 +459,7 @@ function registerEmojiHandling() {
     cancelDismissEmojiPicker()
     dismissEmojiPicker = setTimeout(() => {
       picker?.classList.remove('show')
-      document.getElementById('emoji-trigger')?.classList?.remove('hovered')
+      document.getElementById('emoji-trigger')?.classList.remove('hovered')
     }, 500)
   }
 
@@ -471,15 +499,83 @@ function registerEmojiHandling() {
   )
 }
 
+/**
+ * Handled two scenarios
+ * 1. update side bar chat box when editing draft
+ * 2. update side bar chat box when scrolling in a virtual list
+ */
 function registerDraftHandling() {
   const displayNameIdMap = new Map()
-  const idDisplayNameMap = new Map()
-  const idDisplayTypeMap = new Map()
-  const chatBoxMessageMap = new Map()
-  let currentUserId = null
-  const uid = () => displayNameIdMap.get(document.querySelector('#root .NavigationBar .Avatar .displayName').innerHTML)
-  const chatBoxKey = id => `${idDisplayTypeMap.get(id)}${id}`
+  let currentChatBoxId = null
+  let currentUpdateEditAreaDraftDebounce = null
+  const chatBoxKey = () => {
+    const displayName = document.querySelector('#root .NavigationBar .Avatar .displayName').innerHTML
+    const isGroup = document.querySelector('#root .NavigationBar .Avatar .title')?.textContent?.indexOf('people') >= 0
+    return isGroup ? displayNameIdMap.get('g' + displayName) : displayNameIdMap.get('u' + displayName)
+  }
   const updateChatBoxDebounce = createDebounce()
+
+  function updateChatBoxDOM({ chatBox, draft, inputMode }) {
+    const draftEl = chatBox?.querySelector('.who > .draft')
+    const draftTextEl = chatBox?.querySelector('.what > .draft')
+    const textEl = chatBox?.querySelector('.what > .text, .what > .nonText')
+    const memberEl = chatBox?.querySelector('.who > .member')
+
+    if (draft === '' || draft === undefined || draft === null) {
+      if (!inputMode) {
+        // not input mode, don't need to modify the DOM, i.e. scrolling on the chatbox list
+        return
+      }
+
+      // the draft is empty, rollback the html
+      if (draftEl) {
+        // remove if there is a redundant element
+        draftEl.parentElement.remove()
+      }
+
+      if (draftTextEl) {
+        draftTextEl.parentElement.remove()
+      }
+
+      if (memberEl) {
+        // set the member element back to visible
+        memberEl.style.display = 'initial'
+      }
+
+      if (textEl) {
+        textEl.style.display = 'initial'
+      }
+    } else {
+      // has draft
+      // set the member element to none first
+      if (memberEl) {
+        memberEl.style.display = 'none'
+      }
+
+      if (textEl) {
+        textEl.style.display = 'none'
+      }
+
+      if (draftTextEl) {
+        draftTextEl.innerHTML = draft
+      } else {
+        chatBox
+          ?.querySelector('.subject')
+          ?.insertAdjacentHTML('afterend', `<div class="what"><span class="draft"><span>${draft}</span></span></div>`)
+      }
+
+      if (draftEl) {
+        draftEl.innerHTML = '<span style="color: darkred">Draft:</span>'
+      } else {
+        chatBox
+          ?.querySelector('.subject')
+          ?.insertAdjacentHTML(
+            'afterend',
+            `<div class="who"><span class="draft"><span style="color: darkred">Draft:</span></span></div>`,
+          )
+      }
+    }
+  }
 
   window.addEventListener(
     'onRootMutate',
@@ -494,86 +590,64 @@ function registerDraftHandling() {
           mutation.nextSibling.className === 'InputBox'
         ) {
           const editArea = mutation.target.querySelector('.Editable')
-          const debounce = createDebounce()
-          const id = uid()
-          const cbKey = chatBoxKey(id)
+          const cbKey = chatBoxKey()
+          if (currentChatBoxId === cbKey) {
+            // early return when we are in the same ui
+            // to trigger this behaviour, selecting a member name from @xxx
+            editArea?.dispatchEvent(new Event('input'))
+          } else {
+            currentChatBoxId = cbKey
 
-          if (editArea) {
-            // register to write draft the localStorage
-            editArea.addEventListener(
-              'input',
-              event => {
-                // event handling code for sane browsers
-                const value = event.target.innerHTML
+            // clean up previous debounce
+            currentUpdateEditAreaDraftDebounce?.()
 
-                debounce(() => {
-                  window.localStorage.setItem(cbKey, value)
+            currentUpdateEditAreaDraftDebounce = createDebounce()
 
-                  const chatBox = document.querySelector(`.item[data-conversation-id="${cbKey}"]`)
-                  const memberEl = chatBox?.querySelector('.who > .member')
-                  const textEl = chatBox?.querySelector('.what > .text, .what > .nonText')
+            if (editArea) {
+              // register to write draft the localStorage
+              editArea.addEventListener(
+                'input',
+                event => {
+                  // event handling code for sane browsers
+                  const value = event.target.innerHTML
 
-                  if (value === '') {
-                    // the draft is empty, rollback the html
-                    const senderId = chatBoxMessageMap.get(cbKey)?.senderId
-                    const displayName = senderId === currentUserId ? 'You' : idDisplayNameMap.get(senderId)
+                  currentUpdateEditAreaDraftDebounce(() => {
+                    window.localStorage.setItem(cbKey, value)
 
-                    if (id === senderId && memberEl) {
-                      // remove if there is a redundant element
-                      memberEl.remove()
-                    } else if (memberEl) {
-                      memberEl.innerHTML = `${displayName}:`
-                    }
+                    const chatBox = document.querySelector(`.item[data-conversation-id="${cbKey}"]`)
 
-                    if (textEl) {
-                      const messageMeta = chatBoxMessageMap.get(cbKey)?.meta
-                      // TODO: identify the meta data type for image, video, voice, etc.
-                      textEl.innerHTML = messageMeta?.content ?? `[sent ${messageMeta?.file?.length} file(s)]`
-                    }
-                  } else {
-                    if (memberEl) {
-                      memberEl.innerHTML = '✏️ You:'
-                    } else {
-                      chatBox
-                        ?.querySelector('.subject')
-                        ?.insertAdjacentHTML('afterend', `<div class="who"><span class="member">✏️ You:</span></div>`)
-                    }
-                    if (textEl) {
-                      textEl.innerHTML = value
-                    }
-                  }
-                }, 150)
-              },
-              { passive: true },
-            )
+                    updateChatBoxDOM({ chatBox, draft: value, inputMode: true })
+                  }, 100)
+                },
+                { passive: true },
+              )
 
-            // restore the draft
-            editArea.innerHTML = window.localStorage.getItem(cbKey) || ''
+              const restoredDraft = window.localStorage.getItem(cbKey)
+
+              if (restoredDraft && editArea.innerHTML !== restoredDraft) {
+                // restore the draft
+                editArea.innerHTML = restoredDraft
+              }
+            }
           }
         }
         if (
           mutation.target?.className === 'ReactVirtualized__Grid__innerScrollContainer' ||
           mutation.target?.className === 'ReactVirtualized__Grid ReactVirtualized__List'
         ) {
+          // handle virtual list scrolling will flush the html without draft
           updateChatBoxDebounce(() => {
             document.querySelectorAll('.ReactVirtualized__List .item').forEach((chatBox, index, parent) => {
+              const cbKey = parent[index].getAttribute('data-conversation-id')
+              const savedDraft = window.localStorage.getItem(cbKey)
+              if (savedDraft === null || savedDraft === undefined || savedDraft === '') {
+                // no draft do nothing
+                return
+              }
+
               // just schedule the UI change for next frame to keep the application smooth
               requestAnimationFrame(() => {
-                const cbKey = parent[index].getAttribute('data-conversation-id')
-                const savedDraft = window.localStorage.getItem(cbKey)
-
-                if (!savedDraft || savedDraft === '') {
-                  return
-                }
-
-                const memberEl = chatBox?.querySelector('.who > .member')
-                const textEl = chatBox?.querySelector('.what > .text, .what > .nonText')
-                if (memberEl) {
-                  memberEl.innerHTML = '✏️ You:'
-                }
-                if (textEl) {
-                  textEl.innerHTML = savedDraft
-                }
+                updateChatBoxDOM({ chatBox, draft: savedDraft, inputMode: false })
               })
             })
           }, 16)
@@ -586,55 +660,26 @@ function registerDraftHandling() {
   // get the intercepted response and build up the data we need for draft notes handling
   window.addEventListener(
     'onXHRResponse',
-    ({ detail: { method, url, responseText } }) => {
+    ({ detail: { method, url, responseText, data } }) => {
       if (!responseText) return
-      const json = JSON.parse(responseText)
+      const responseJson = JSON.parse(responseText)
 
       if (url.endsWith('api/group')) {
-        if (json?.data && Array.isArray(json.data)) {
-          json.data.forEach(group => {
-            displayNameIdMap.set(group.name, group.groupId)
-            idDisplayNameMap.set(group.groupId, group.name)
-            idDisplayTypeMap.set(group.groupId, 'g')
+        if (responseJson?.data && Array.isArray(responseJson.data)) {
+          responseJson.data.forEach(group => {
+            displayNameIdMap.set('g' + group.name, 'g' + group.groupId)
           })
         }
       } else if (url.endsWith('api/user')) {
-        if (json?.data && Array.isArray(json.data)) {
-          json.data
+        if (responseJson?.data && Array.isArray(responseJson.data)) {
+          responseJson.data
             .filter(user => user.deleted !== true)
             .forEach(user => {
-              displayNameIdMap.set(user.displayName, user.tbId)
-              idDisplayNameMap.set(user.tbId, user.displayName)
-              idDisplayTypeMap.set(user.tbId, 'u')
+              displayNameIdMap.set('u' + user.displayName, 'u' + user.tbId)
             })
         }
-      } else if (url.endsWith('api/message/recent')) {
-        if (json?.data && Array.isArray(json.data)) {
-          json.data.forEach(chatBoxMessage => {
-            // receiverType:
-            // 0 -> personal chat
-            // 1 -> group / announcement
-            if (chatBoxMessage.receiverType === 0) {
-              // user, use the state to determine the chat box uid
-              if (chatBoxMessage.state[chatBoxMessage.senderId] === 1) {
-                chatBoxMessageMap.set(`u${chatBoxMessage.receiverId}`, chatBoxMessage)
-              } else {
-                chatBoxMessageMap.set(`u${chatBoxMessage.senderId}`, chatBoxMessage)
-              }
-            } else if (chatBoxMessage.receiverType === 1) {
-              // group, use the state to determine the chat box uid
-              if (chatBoxMessage.state[chatBoxMessage.senderId] === 1) {
-                chatBoxMessageMap.set(`g${chatBoxMessage.receiverId}`, chatBoxMessage)
-              } else if (chatBoxMessage.state[chatBoxMessage.receiverId] === 1) {
-                chatBoxMessageMap.set(`g${chatBoxMessage.senderId}`, chatBoxMessage)
-              } else {
-                chatBoxMessageMap.set(`g${chatBoxMessage.receiverId}`, chatBoxMessage)
-              }
-            }
-          })
-        }
-      } else if (url.endsWith('api/user/me')) {
-        currentUserId = json?.data?.user?.tbId
+      } else if (url.endsWith('api/message/sendMsg')) {
+        document.getElementsByClassName('Editable')[0]?.dispatchEvent(new Event('input'))
       }
     },
     { passive: true },
@@ -642,10 +687,12 @@ function registerDraftHandling() {
 }
 
 /**
- * Emit CustomEvent('onXHRResponse', { url: string, method: string, responseText: string }) when there is XHR
+ * Emit CustomEvent('onXHRResponse', { detail: { url: string, method: string, responseText: string } }) when there is XHR
+ * Emit CustomEvent('onXHRSend', { detail: string }) when there is XHR
  */
 function registerXHRInterceptor() {
   const rawOpen = XMLHttpRequest.prototype.open
+  const rawSend = XMLHttpRequest.prototype.send
 
   XMLHttpRequest.prototype.open = function (method, url) {
     this._method = method
@@ -655,6 +702,15 @@ function registerXHRInterceptor() {
       setupHook(this)
     }
     rawOpen.apply(this, arguments)
+  }
+  XMLHttpRequest.prototype.send = function (data) {
+    this._data = data
+    window.dispatchEvent(
+      new CustomEvent('onXHRSend', {
+        detail: { data, url: this.url },
+      }),
+    )
+    rawSend.apply(this, arguments)
   }
 
   function setupHook(xhr) {
@@ -668,6 +724,7 @@ function registerXHRInterceptor() {
           detail: {
             url: this._url,
             method: this._method,
+            data: this._data,
             responseText: ret,
           },
         }),
@@ -688,12 +745,112 @@ function registerXHRInterceptor() {
   }
 }
 
+function registerWebSocketInterceptor() {
+  window.WebSocket = new Proxy(window.WebSocket, {
+    construct(target, args) {
+      console.log('Proxying WebSocket connection', ...args)
+      const ws = new target(...args)
+
+      // Configurable hooks
+      ws.hooks = {
+        beforeSend: () => null,
+        beforeReceive: () => null,
+      }
+
+      // Intercept send
+      ws.send = new Proxy(ws.send, {
+        apply(target, thisArg, args) {
+          if (ws.hooks.beforeSend(args) === false) {
+            return
+          }
+          return target.apply(thisArg, args)
+        },
+      })
+
+      // Intercept events
+      ws.addEventListener = new Proxy(ws.addEventListener, {
+        apply(target, thisArg, args) {
+          if (args[0] === 'message' && ws.hooks.beforeReceive(args) === false) {
+            return
+          }
+          return target.apply(thisArg, args)
+        },
+      })
+
+      Object.defineProperty(ws, 'onmessage', {
+        set(func) {
+          const onmessage = function onMessageProxy(event) {
+            if (ws.hooks.beforeReceive(event) === false) {
+              return
+            }
+            func.call(this, event)
+          }
+          return ws.addEventListener.apply(this, ['message', onmessage, false])
+        },
+      })
+
+      // Save reference
+      window._websockets = window._websockets || []
+      window._websockets.push(ws)
+      window.dispatchEvent(new Event('onWebsocketCreated'))
+
+      return ws
+    },
+  })
+
+  window.addEventListener('onWebsocketCreated', () => {
+    window._websockets[0].hooks = {
+      // Just log the outgoing request
+      beforeSend: data => window.dispatchEvent(new CustomEvent('onWebSocketSend', { detail: data })),
+      // Return false to prevent the on message callback from being invoked
+      beforeReceive: data => window.dispatchEvent(new CustomEvent('onWebSocketReceive', { detail: data })),
+    }
+  })
+}
+
+function registerAutoScroll() {
+  window.addEventListener(
+    'onRootMutate',
+    ({ detail: mutationsList }) => {
+      for (let mutation of mutationsList) {
+        if (
+          mutation.type === 'childList' &&
+          mutation.addedNodes.length === 0 &&
+          mutation.target &&
+          mutation.target.className === 'ChatView'
+        ) {
+          const scrollView = document.querySelector('.scrollView')
+          scrollView.style['overflow-anchor'] = 'auto'
+          scrollView.style['overflow-y'] = 'scroll'
+
+          scrollView.addEventListener('scroll', e => {
+            if (e.target.scrollTop < 150) {
+              e.target.querySelector('.previousButton')?.click()
+            }
+          })
+        }
+      }
+    },
+    { passive: true },
+  )
+}
+
+// register XHR intercept the dispatch CustomEvent for post-processing
 registerXHRInterceptor()
 
-registerMutationObserver()
+//// register websocket interceptor
+// registerWebSocketInterceptor()
 
+// register DOM change listener
+registerRootNodeMutationObserver()
+
+// register teamwork timeout auto refresh
+registerAutoRefreshWhenTeamworkTimeoutHandling()
+
+// add draft handling
 registerDraftHandling()
 
+// add new functional buttons to menu bar
 registerFunctionalButtons()
 
 // handle dark mode
@@ -730,3 +887,5 @@ registerResetRecommendedSettings()
 
 // handle emoji features
 registerEmojiHandling()
+
+registerAutoScroll()

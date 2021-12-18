@@ -4,5 +4,5 @@
     src: url('https://cdn.jsdelivr.net/gh/gaplo917/open-huninn-font@master/font/jf-openhuninn-1.1.ttf') format('truetype');
 }
 * {
-    font-family: 'JFOpen', "Apple Color Emoji", -apple-system, 'Helvetica Neue', BlinkMacSystemFont, 'Microsoft Yahei', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', sans-serif, "Apple Color Emoji";
+    font-family: 'JFOpen', 'Apple Color Emoji', -apple-system, 'Helvetica Neue', BlinkMacSystemFont, 'Microsoft Yahei', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', sans-serif, "Apple Color Emoji";
 }
