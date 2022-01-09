@@ -315,24 +315,6 @@ const registerRootNodeMutationObserver = () => {
   observer.observe(targetNode, config)
 }
 
-const registerAutoRefreshWhenTeamworkTimeoutHandling = () => {
-  new MutationObserver(function (mutationsList, observer) {
-    for (let mutation of mutationsList) {
-      if (
-        mutation.type === 'childList' &&
-        mutation.addedNodes.length === 1 &&
-        mutation.addedNodes[0].getAttribute('role') === 'dialog'
-      ) {
-        const refreshButton = mutation.addedNodes[0].querySelector('.btn.btn-primary')
-        if (refreshButton?.innerText?.toLowerCase() === 'refresh') {
-          // auto toggle the refresh button when timeout
-          refreshButton?.click()
-        }
-      }
-    }
-  }).observe(document.body, { childList: true })
-}
-
 function registerFunctionalButtons() {
   window.addEventListener(
     'onRootMutate',
@@ -843,9 +825,6 @@ registerXHRInterceptor()
 
 // register DOM change listener
 registerRootNodeMutationObserver()
-
-// register teamwork timeout auto refresh
-registerAutoRefreshWhenTeamworkTimeoutHandling()
 
 // add draft handling
 registerDraftHandling()
