@@ -6,7 +6,8 @@ const openUrlHandler = (event, url) => {
     url &&
     !url.startsWith(config.teamworkUrl) &&
     !url.startsWith(config.dashboardUrl) &&
-    !url.startsWith(config.supportTicketUrl)
+    !url.startsWith(config.supportTicketUrl) &&
+    !url.startsWith(config.googleOauth)
   ) {
     event.preventDefault()
     return open(url)
