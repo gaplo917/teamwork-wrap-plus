@@ -44,10 +44,12 @@ app.on('ready', async () => {
 // listen badge update from renderer
 ipcMain.on('badge', (event, data) => {
   const { count } = data
-  if (count === 0) {
-    app.dock.setBadge('')
-  } else {
-    app.dock.setBadge(`${count}`)
+  if(app.dock) {
+    if (count === 0) {
+      app.dock.setBadge('')
+    } else {
+      app.dock.setBadge(`${count}`)
+    }
   }
 })
 
