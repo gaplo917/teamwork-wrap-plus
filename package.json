@@ -17,6 +17,12 @@
     "files": [
       "build/*"
     ],
+    "win": {
+      "target": [
+        "portable",
+        "nsis"
+      ]
+    },
     "mac": {
       "category": "productivity",
       "target": {
