@@ -9,10 +9,10 @@ import { config } from './config'
 const isDevelopment = process.env.NODE_ENV !== 'production'
 
 // brain-less copy https://stackoverflow.com/a/16684530/6763724
-const getDirFilesRecursively = function (dir) {
+const getDirFilesRecursively = function(dir) {
   let results = []
   const list = fs.readdirSync(dir)
-  list.forEach(function (file) {
+  list.forEach(function(file) {
     file = dir + '/' + file
     const stat = fs.statSync(file)
     if (stat && stat.isDirectory()) {
@@ -46,20 +46,27 @@ export async function createMainWindow() {
     },
   })
 
+  const isMac = process.platform === 'darwin'
+
   if (isDevelopment) {
     window.webContents.openDevTools()
   }
 
-  window.on('minimize', function (event) {
-    event.preventDefault()
-    window.hide()
+  window.on('minimize', function(event) {
+    if (isMac) {
+      event.preventDefault()
+      window.hide()
+    }
   })
 
-  window.on('close', function (event) {
-    event.preventDefault()
-    window.hide()
+  window.on('close', function(event) {
+    if (isMac) {
+      event.preventDefault()
+      window.hide()
 
-    return false
+      return false
+    }
+    return true
   })
 
   window.webContents.on('dom-ready', async () => {
@@ -131,7 +138,7 @@ export async function createMainWindow() {
     // The 'contextmenu' event is emitted after 'selectionchange' has fired but possibly before the
     // visible selection has changed. Try to wait to show the menu until after that, otherwise the
     // visible selection will update after the menu dismisses and look weird.
-    setTimeout(function () {
+    setTimeout(function() {
       menu.popup(window)
     }, 30)
   })
