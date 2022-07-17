@@ -6,6 +6,7 @@ const urls = {
   dashboard: 'https://web.dashboard.gtomato.com',
   roomBooking: 'https://web.dashboard.gtomato.com/room-booking/standalone',
   supportTicket: 'https://osticket.gtomato.com/open.php',
+  githubDownload: 'https://github.com/gaplo917/teamwork-wrap-plus/releases',
 }
 /**
  * Injection happens in create-main-window.js
@@ -220,6 +221,12 @@ function registerResetRecommendedSettings() {
   })
 }
 
+function registerDownloadLatestVersion() {
+  ipc.on('download', () => {
+    window.open(urls.githubDownload)
+  })
+}
+
 function registerFontHandling() {
   registerBooleanStyleSheet('isPingFang', {
     css: injectedCss.isPingFang,
@@ -404,7 +411,7 @@ function registerEmojiHandling() {
 
   // create emoji picker
   const picker = new window.Picker({
-    onEmojiSelect: (emoji) => {
+    onEmojiSelect: emoji => {
       const el = document.getElementsByClassName('Editable')[0]
       el?.focus()
 
@@ -412,7 +419,7 @@ function registerEmojiHandling() {
         pasteHtmlAtCaret(emoji.native)
         el?.dispatchEvent(new Event('input'))
       })
-    }
+    },
   })
 
   document.body.prepend(picker)
@@ -851,6 +858,9 @@ registerBadgeHandling()
 
 // handle recommended settings
 registerResetRecommendedSettings()
+
+// handle download latest version
+registerDownloadLatestVersion()
 
 // handle emoji features
 registerEmojiHandling()

@@ -1,6 +1,6 @@
 import { Menu } from 'electron'
 
-export function createApplicationMenu({ themeItems }) {
+export function createApplicationMenu({ themeItems, downloadItems }) {
   const template = []
 
   if (process.platform === 'darwin') {
@@ -15,7 +15,12 @@ export function createApplicationMenu({ themeItems }) {
     {
       label: 'Theme',
       submenu: [...themeItems],
-    })
+    },
+    {
+      label: 'Download',
+      submenu: [...downloadItems],
+    },
+  )
 
   return Menu.buildFromTemplate(template)
 }

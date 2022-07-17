@@ -44,7 +44,7 @@ app.on('ready', async () => {
 // listen badge update from renderer
 ipcMain.on('badge', (event, data) => {
   const { count } = data
-  if(app.dock) {
+  if (app.dock) {
     if (count === 0) {
       app.dock.setBadge('')
     } else {
@@ -81,6 +81,14 @@ ipcMain.on('application-settings', (event, data) => {
         label: 'Reset to Recommended Settings',
         click: () => {
           mainWindow.webContents.send('reset-recommended-settings', {})
+        },
+      },
+    ],
+    downloadItems: [
+      {
+        label: 'Download latest version',
+        click: () => {
+          mainWindow.webContents.send('download', {})
         },
       },
     ],

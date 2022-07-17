@@ -12,6 +12,7 @@ const allowedChannels = [
   'isNotoSans',
   'isJFOpen',
   'isSubpixel',
+  'download',
 ]
 
 contextBridge.exposeInMainWorld('TWW', {
