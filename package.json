@@ -57,7 +57,7 @@
     "copy-webpack-plugin": "^6.0.1",
     "dotenv": "^8.2.0",
     "electron": "^19.0.0",
-    "electron-builder": "^22.14.5",
+    "electron-builder": "^23.1.0",
     "electron-notarize": "^0.3.0",
     "electron-webpack": "^2.8.2",
     "prettier": "^2.0.5",
