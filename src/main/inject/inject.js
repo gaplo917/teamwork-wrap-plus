@@ -613,7 +613,6 @@ function registerDraftHandling() {
               const savedDraft = window.localStorage.getItem(cbKey)
               if (savedDraft === null || savedDraft === undefined || savedDraft === '') {
                 // no draft do nothing
-                return
               }
 
               // just schedule the UI change for next frame to keep the application smooth
@@ -621,7 +620,7 @@ function registerDraftHandling() {
                 updateChatBoxDOM({ chatBox, draft: savedDraft, inputMode: false })
               })
             })
-          }, 16)
+          }, 8)
         }
       }
     },
