@@ -17,7 +17,6 @@ const urls = {
  * isNotoSans: string,
  * isPingFang: string,
  * isSubpixel: string,
- * emojiMart: string,
  * emojiPicker: string,
  * darkModeFixes: string,
  * }} */
@@ -397,24 +396,6 @@ function registerFunctionalButtons() {
 }
 
 function registerEmojiHandling() {
-  window.emojiMart.definePicker('emoji-picker', {
-    color: '#7bb5f9',
-    native: true,
-    emojiTooltip: true,
-    showPreview: false,
-    showSkinTones: false,
-    theme: storage.settings.isDark ? 'dark' : 'light',
-    onClick: (emoji, event) => {
-      const el = document.getElementsByClassName('Editable')[0]
-      el?.focus()
-
-      requestAnimationFrame(() => {
-        pasteHtmlAtCaret(emoji.native)
-        el?.dispatchEvent(new Event('input'))
-      })
-    },
-  })
-
   const emojiPickerStyleEl = document.createElement('style')
   emojiPickerStyleEl.innerText = injectedCss.emojiPicker
 
@@ -422,14 +403,25 @@ function registerEmojiHandling() {
   document.head.appendChild(emojiPickerStyleEl)
 
   // create emoji picker
-  const picker = document.createElement('emoji-picker')
+  const picker = new window.Picker({
+    onEmojiSelect: (emoji) => {
+      const el = document.getElementsByClassName('Editable')[0]
+      el?.focus()
+
+      requestAnimationFrame(() => {
+        pasteHtmlAtCaret(emoji.native)
+        el?.dispatchEvent(new Event('input'))
+      })
+    }
+  })
+
   document.body.prepend(picker)
 
   let dismissEmojiPicker = null
   const showEmojiPicker = () => {
     document.getElementById('emoji-trigger')?.classList.add('hovered')
-    if (!picker?.classList.contains('show')) {
-      picker?.classList.add('show')
+    if (!picker?.classList.contains('visible')) {
+      picker?.classList.add('visible')
     }
   }
   const cancelDismissEmojiPicker = () => {
@@ -440,18 +432,15 @@ function registerEmojiHandling() {
   const scheduleDismissEmojiPicker = () => {
     cancelDismissEmojiPicker()
     dismissEmojiPicker = setTimeout(() => {
-      picker?.classList.remove('show')
-      document.getElementById('emoji-trigger')?.classList.remove('hovered')
-    }, 500)
+      requestAnimationFrame(() => {
+        picker?.classList.remove('visible')
+        document.getElementById('emoji-trigger')?.classList.remove('hovered')
+      })
+    }, 300)
   }
 
   picker.addEventListener('mouseenter', cancelDismissEmojiPicker)
   picker.addEventListener('mouseleave', scheduleDismissEmojiPicker)
-
-  // add the css
-  const emojiMartStylEl = document.createElement('style')
-  emojiMartStylEl.innerText = injectedCss.emojiMart
-  document.head.appendChild(emojiMartStylEl)
 
   window.addEventListener(
     'onRootMutate',
